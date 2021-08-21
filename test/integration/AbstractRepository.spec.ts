@@ -1,9 +1,6 @@
 import { getAllDbs, getKnexForDb } from './helpers/knexInstanceProvider'
 import { Knex } from 'knex'
-import {
-  createUserTable,
-  dropUserTable,
-} from './helpers/tableCreator'
+import { createUserTable, dropUserTable } from './helpers/tableCreator'
 import { createUserRepository, UserRepository } from './helpers/UserRepository'
 
 describe('AbstractRepository integration', () => {
