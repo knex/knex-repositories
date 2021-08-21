@@ -1,0 +1,71 @@
+{
+  "name": "knex-repositories",
+  "version": "1.0.0",
+  "license": "MIT",
+  "maintainers": [
+    {
+      "name": "Igor Savin",
+      "email": "kibertoad@gmail.com"
+    }
+  ],
+  "description": "Parametrized CRUD repository abstraction for Knex.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "db:start": "docker-compose -f scripts/docker-compose.yml up --build -d mysql postgres mssql && docker-compose -f scripts/docker-compose.yml up waitmssql waitmysql waitpostgres",
+    "db:stop": "docker-compose -f scripts/docker-compose.yml down",
+    "test": "jest --config=jest.config.json --runInBand",
+    "test:update-snapshots": "jest --config=jest.config.json --runInBand -u",
+    "test:coverage": "jest --config=jest.config.json --coverage --runInBand",
+    "test:ci": "npm run lint && npm run test:coverage",
+    "lint": "eslint --format codeframe \"lib/**/*.ts\" \"test/**/*.ts\"",
+    "prettier": "prettier --write \"{lib,test}/**/*.{js,ts}\" index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "knex": "^0.95.10"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.0.1",
+    "@types/node": "^16.7.1",
+    "@typescript-eslint/eslint-plugin": "^4.29.2",
+    "@typescript-eslint/parser": "^4.29.2",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.1",
+    "jest": "^27.0.6",
+    "knex": "^0.95.10",
+    "knex-utils": "^5.3.2",
+    "mysql": "^2.18.1",
+    "mysql2": "^2.3.0",
+    "pg": "^8.7.1",
+    "prettier": "^2.3.2",
+    "sqlite3": "^5.0.2",
+    "tedious": "^11.4.0",
+    "ts-jest": "^27.0.5",
+    "typescript": "4.3.5"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "homepage": "http://github.com/knex/knex-repositories",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/knex/knex-repositories.git"
+  },
+  "keywords": [
+    "knex",
+    "crud",
+    "repository",
+    "repositories",
+    "db",
+    "database",
+    "persistence"
+  ],
+  "files": [
+    "README.md",
+    "LICENSE",
+    "dist/*"
+  ]
+}
