@@ -7,7 +7,7 @@ export type NewUserRow = {
 }
 
 export type FullUserRow = NewUserRow & {
-  id: number
+  userId: number
   createdAt: Date
   updatedAt: Date
 }
@@ -18,5 +18,7 @@ export function createUserRepository(knex: Knex) {
   return new AbstractRepository<NewUserRow, FullUserRow>(knex, {
     tableName: 'users',
     tableColumnsToFetch: ['userId', 'name', 'age', 'createdAt', 'updatedAt'],
+    idColumn: 'userId',
+    filterColumns: ['name'],
   })
 }

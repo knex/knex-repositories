@@ -36,7 +36,7 @@
     "eslint-plugin-prettier": "^3.4.1",
     "jest": "^27.0.6",
     "knex": "^0.95.10",
-    "knex-utils": "^5.3.2",
+    "knex-utils": "^5.4.0",
     "mysql": "^2.18.1",
     "mysql2": "^2.3.0",
     "pg": "^8.7.1",
