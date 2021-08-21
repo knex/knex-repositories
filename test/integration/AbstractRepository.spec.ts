@@ -41,7 +41,7 @@ describe('AbstractRepository integration', () => {
         age: 30,
       }
 
-        describe('create', () => {
+      describe('create', () => {
         it('creates new user', async () => {
           const result = await userRepository.create(USER_1)
 
@@ -64,10 +64,7 @@ describe('AbstractRepository integration', () => {
 
           const result = await userRepository.get()
 
-          expect(result).toMatchObject([
-            assertUser1,
-            assertUser2,
-          ])
+          expect(result).toMatchObject([assertUser1, assertUser2])
         })
 
         it('supports empty filter', async () => {
@@ -76,25 +73,21 @@ describe('AbstractRepository integration', () => {
 
           const result = await userRepository.get({})
 
-          expect(result).toMatchObject([
-            assertUser1,
-            assertUser2,
-          ])
+          expect(result).toMatchObject([assertUser1, assertUser2])
         })
 
         it('supports sorting', async () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
 
-          const result = await userRepository.get({}, [{
-            column: 'userId',
-            order: 'desc'
-          }])
-
-          expect(result).toMatchObject([
-            assertUser2,
-            assertUser1,
+          const result = await userRepository.get({}, [
+            {
+              column: 'userId',
+              order: 'desc',
+            },
           ])
+
+          expect(result).toMatchObject([assertUser2, assertUser1])
         })
 
         it('supports filtering', async () => {
@@ -102,12 +95,10 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_2)
 
           const result = await userRepository.get({
-            name: 'test'
+            name: 'test',
           })
 
-          expect(result).toMatchObject([
-            assertUser1,
-          ])
+          expect(result).toMatchObject([assertUser1])
         })
 
         it('skips unsupported filtering', async () => {
@@ -115,13 +106,10 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_2)
 
           const result = await userRepository.get({
-            age: 30
+            age: 30,
           })
 
-          expect(result).toMatchObject([
-            assertUser1,
-            assertUser2,
-          ])
+          expect(result).toMatchObject([assertUser1, assertUser2])
         })
       })
 
@@ -130,15 +118,13 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
           const users1 = await userRepository.get({
-            name: 'test'
+            name: 'test',
           })
 
           await userRepository.deleteById(users1[0].userId)
           const users2 = await userRepository.get()
 
-          expect(users2).toMatchObject([
-            assertUser2,
-          ])
+          expect(users2).toMatchObject([assertUser2])
         })
       })
     })

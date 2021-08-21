@@ -19,6 +19,6 @@ export function createUserRepository(knex: Knex) {
     tableName: 'users',
     tableColumnsToFetch: ['userId', 'name', 'age', 'createdAt', 'updatedAt'],
     idColumn: 'userId',
-    filterColumns: ['name']
+    filterColumns: ['name'],
   })
 }

@@ -41,7 +41,10 @@ export class AbstractRepository<
     return insertedRows[0]
   }
 
-  async get(filterCriteria?: Record<string, any>, sorting?: SortingParam[]): Promise<FullEntityRow[]> {
+  async get(
+    filterCriteria?: Record<string, any>,
+    sorting?: SortingParam[]
+  ): Promise<FullEntityRow[]> {
     const filters = filterCriteria ? pickWithoutUndefined(filterCriteria, this.filterColumns) : {}
 
     const queryBuilder = this.knex(this.tableName).select(this.tableColumnsToFetch).where(filters)
