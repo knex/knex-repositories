@@ -32,10 +32,14 @@ export class AbstractRepository<
     this.filterColumns = config.filterColumns ?? []
   }
 
-  async create(newEntityRow: NewEntityRow): Promise<FullEntityRow> {
+  async create(
+    newEntityRow: NewEntityRow,
+    transactionProvider?: Knex.TransactionProvider
+  ): Promise<FullEntityRow> {
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const insertRow = copyWithoutUndefined(newEntityRow)
 
-    const insertedRows = await this.knex(this.tableName)
+    const insertedRows = await queryBuilder(this.tableName)
       .insert(insertRow)
       .returning(this.tableColumnsToFetch)
     return insertedRows[0]
@@ -57,8 +61,12 @@ export class AbstractRepository<
     return result
   }
 
-  async deleteById(id: string | number): Promise<void> {
-    await this.knex(this.tableName)
+  async deleteById(
+    id: string | number,
+    transactionProvider?: Knex.TransactionProvider
+  ): Promise<void> {
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
+    await queryBuilder(this.tableName)
       .where({
         [this.idColumn]: id,
       })
