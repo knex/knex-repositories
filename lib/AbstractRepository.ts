@@ -1,9 +1,16 @@
 import { Knex } from 'knex'
-import { copyWithoutUndefined } from 'knex-utils'
+import { copyWithoutUndefined, pickWithoutUndefined } from 'knex-utils'
+
+export type SortingParam = {
+  column: string
+  order?: 'desc' | 'asc'
+}
 
 export type RepositoryConfig = {
   tableName: string
   tableColumnsToFetch: string[]
+  idColumn: string
+  filterColumns?: string[]
 }
 
 export class AbstractRepository<
@@ -13,12 +20,16 @@ export class AbstractRepository<
   protected readonly knex: Knex
   protected tableName: string
   protected tableColumnsToFetch: string[]
+  protected idColumn: string
+  protected filterColumns: string[]
 
   constructor(knex: Knex, config: RepositoryConfig) {
     this.knex = knex
 
     this.tableName = config.tableName
     this.tableColumnsToFetch = config.tableColumnsToFetch
+    this.idColumn = config.idColumn
+    this.filterColumns = config.filterColumns ?? []
   }
 
   async create(newEntityRow: NewEntityRow): Promise<FullEntityRow> {
@@ -28,6 +39,27 @@ export class AbstractRepository<
       .insert(insertRow)
       .returning(this.tableColumnsToFetch)
     return insertedRows[0]
+  }
+
+  async get(filterCriteria?: Record<string, any>, sorting?: SortingParam[]): Promise<FullEntityRow[]> {
+    const filters = filterCriteria ? pickWithoutUndefined(filterCriteria, this.filterColumns) : {}
+
+    const queryBuilder = this.knex(this.tableName).select(this.tableColumnsToFetch).where(filters)
+
+    if (sorting) {
+      queryBuilder.orderBy(sorting)
+    }
+
+    const result = await queryBuilder
+    return result
+  }
+
+  async deleteById(id: string | number): Promise<void> {
+    await this.knex(this.tableName)
+      .where({
+        [this.idColumn]: id,
+      })
+      .del()
   }
 
   getTransactionProvider(): any {
