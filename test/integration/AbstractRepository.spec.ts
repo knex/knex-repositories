@@ -57,12 +57,12 @@ describe('AbstractRepository integration', () => {
         })
       })
 
-      describe('get', () => {
+      describe('getByCriteria', () => {
         it('returns users', async () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
 
-          const result = await userRepository.get()
+          const result = await userRepository.getByCriteria()
 
           expect(result).toMatchObject([assertUser1, assertUser2])
         })
@@ -71,7 +71,7 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
 
-          const result = await userRepository.get({})
+          const result = await userRepository.getByCriteria({})
 
           expect(result).toMatchObject([assertUser1, assertUser2])
         })
@@ -80,7 +80,7 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
 
-          const result = await userRepository.get({}, [
+          const result = await userRepository.getByCriteria({}, [
             {
               column: 'userId',
               order: 'desc',
@@ -94,7 +94,7 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
 
-          const result = await userRepository.get({
+          const result = await userRepository.getByCriteria({
             name: 'test',
           })
 
@@ -105,7 +105,7 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
 
-          const result = await userRepository.get({
+          const result = await userRepository.getByCriteria({
             age: 30,
           })
 
@@ -113,16 +113,47 @@ describe('AbstractRepository integration', () => {
         })
       })
 
+      describe('updateById', () => {
+        it('updates supported fields', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+          const users1 = await userRepository.getByCriteria({
+            name: 'test',
+          })
+          const [user1] = users1
+
+          await userRepository.updateById(user1.userId, {
+            age: 11,
+            name: 'test14',
+          })
+          const users = await userRepository.getByCriteria({}, [
+            {
+              column: 'userId',
+              order: 'asc',
+            },
+          ])
+
+          expect(users).toMatchObject([
+            {
+              ...assertUser1,
+              age: 11,
+              name: 'test',
+            },
+            assertUser2,
+          ])
+        })
+      })
+
       describe('deleteById', () => {
         it('deletes user', async () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
-          const users1 = await userRepository.get({
+          const users1 = await userRepository.getByCriteria({
             name: 'test',
           })
 
           await userRepository.deleteById(users1[0].userId)
-          const users2 = await userRepository.get()
+          const users2 = await userRepository.getByCriteria()
 
           expect(users2).toMatchObject([assertUser2])
         })
