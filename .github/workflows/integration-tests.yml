@@ -1,6 +1,6 @@
 ---
 
-name: CI
+name: ci
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: CI
+    name: ci
 
     strategy:
       fail-fast: false
