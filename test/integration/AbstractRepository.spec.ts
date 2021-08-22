@@ -129,17 +129,17 @@ describe('AbstractRepository integration', () => {
           const users = await userRepository.getByCriteria({}, [
             {
               column: 'userId',
-              order: 'asc',
+              order: 'desc',
             },
           ])
 
           expect(users).toMatchObject([
+            assertUser2,
             {
               ...assertUser1,
               age: 11,
               name: 'test',
             },
-            assertUser2,
           ])
         })
       })

@@ -18,6 +18,12 @@ export function createUserRepository(knex: Knex) {
   return new AbstractRepository<NewUserRow, FullUserRow>(knex, {
     tableName: 'users',
     idColumn: 'userId',
+    defaultOrderBy: [
+      {
+        column: 'userId',
+        order: 'asc',
+      },
+    ],
     columnsToFetch: ['userId', 'name', 'age', 'createdAt', 'updatedAt'],
     columnsForCreate: ['name', 'age'],
     columnsForUpdate: ['age'],
