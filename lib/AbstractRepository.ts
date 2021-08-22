@@ -8,13 +8,14 @@ export type SortingParam<FullEntityRow> = {
 
 export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow> = {
   tableName: string
+  idColumn: keyof FullEntityRow & string
+  defaultOrderBy?: SortingParam<FullEntityRow>[]
   columnsForCreate?: (keyof NewEntityRow & string)[]
   columnsForUpdate?: (keyof UpdatedEntityRow & string)[]
   columnsForGetFilters?: (keyof FullEntityRow & string)[]
   columnsToFetch: (keyof FullEntityRow & string)[]
   columnsToFetchList?: (keyof FullEntityRow & string)[]
   columnsToFetchDetails?: (keyof FullEntityRow & string)[]
-  idColumn: keyof FullEntityRow & string
 }
 
 export class AbstractRepository<
@@ -28,6 +29,7 @@ export class AbstractRepository<
   protected readonly columnsToFetchList: string[]
   protected readonly columnsToFetchDetails: string[]
   protected readonly idColumn: string
+  protected readonly defaultOrderBy?: SortingParam<FullEntityRow>[]
   private readonly columnsForCreate: string[]
   private readonly columnsForGetFilters?: string[]
   private readonly columnsForUpdate?: string[]
@@ -37,6 +39,7 @@ export class AbstractRepository<
 
     this.tableName = config.tableName
     this.idColumn = config.idColumn
+    this.defaultOrderBy = config.defaultOrderBy
     this.columnsToFetch = config.columnsToFetch
     this.columnsToFetchList = config.columnsToFetch ?? config.columnsToFetch
     this.columnsToFetchDetails = config.columnsToFetch ?? config.columnsToFetch
@@ -85,7 +88,7 @@ export class AbstractRepository<
 
   async getByCriteria(
     filterCriteria?: Partial<FullEntityRow>,
-    sorting?: SortingParam<FullEntityRow>[],
+    sorting?: SortingParam<FullEntityRow>[] | null,
     columnsToFetch?: (keyof FullEntityRow & string)[]
   ): Promise<FullEntityRow[]> {
     let filters
@@ -100,8 +103,10 @@ export class AbstractRepository<
     const queryBuilder = this.knex(this.tableName)
       .select(columnsToFetch ?? this.columnsToFetchList)
       .where(filters)
-    if (sorting) {
-      queryBuilder.orderBy(sorting)
+
+    const sortParam = sorting ?? this.defaultOrderBy
+    if (sortParam) {
+      queryBuilder.orderBy(sortParam)
     }
 
     const result = await queryBuilder
