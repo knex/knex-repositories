@@ -158,6 +158,29 @@ describe('AbstractRepository integration', () => {
           expect(users2).toMatchObject([assertUser2])
         })
       })
+
+      describe('getById', () => {
+        it('retrieves user details', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+          const users1 = await userRepository.getByCriteria({
+            name: 'test',
+          })
+          const [user1] = users1
+
+          const user = await userRepository.getById(user1.userId)
+          const assertDates = knex.client.driverName.includes('sqlite')
+            ? {
+                createdAt: expect.any(String),
+                updatedAt: expect.any(String),
+              }
+            : { createdAt: expect.any(Date), updatedAt: expect.any(Date) }
+          expect(user).toMatchObject({
+            ...assertUser1,
+            ...assertDates,
+          })
+        })
+      })
     })
   })
 })
