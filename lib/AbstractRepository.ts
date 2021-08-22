@@ -6,11 +6,12 @@ export type SortingParam = {
   order?: 'desc' | 'asc'
 }
 
-export type RepositoryConfig = {
+export type RepositoryConfig<NewEntityRow, FullEntityRow> = {
   tableName: string
-  tableColumnsToFetch: string[]
-  idColumn: string
-  filterColumns?: string[]
+  columnsForCreate?: (keyof NewEntityRow & string)[]
+  columnsForGetFilters?: (keyof FullEntityRow & string)[]
+  columnsToFetch: (keyof FullEntityRow & string)[]
+  idColumn: keyof FullEntityRow & string
 }
 
 export class AbstractRepository<
@@ -18,18 +19,20 @@ export class AbstractRepository<
   FullEntityRow extends NewEntityRow = any
 > {
   protected readonly knex: Knex
-  protected tableName: string
-  protected tableColumnsToFetch: string[]
-  protected idColumn: string
-  protected filterColumns: string[]
+  protected readonly tableName: string
+  protected readonly columnsToFetch: string[]
+  protected readonly idColumn: string
+  private readonly columnsForGetFilters: string[]
+  private readonly columnsForCreate: string[]
 
-  constructor(knex: Knex, config: RepositoryConfig) {
+  constructor(knex: Knex, config: RepositoryConfig<NewEntityRow, FullEntityRow>) {
     this.knex = knex
 
     this.tableName = config.tableName
-    this.tableColumnsToFetch = config.tableColumnsToFetch
     this.idColumn = config.idColumn
-    this.filterColumns = config.filterColumns ?? []
+    this.columnsToFetch = config.columnsToFetch
+    this.columnsForCreate = config.columnsForCreate ?? []
+    this.columnsForGetFilters = config.columnsForGetFilters ?? []
   }
 
   async create(
@@ -37,11 +40,11 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider
   ): Promise<FullEntityRow> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
-    const insertRow = copyWithoutUndefined(newEntityRow)
+    const insertRow = pickWithoutUndefined(newEntityRow, this.columnsForCreate)
 
     const insertedRows = await queryBuilder(this.tableName)
       .insert(insertRow)
-      .returning(this.tableColumnsToFetch)
+      .returning(this.columnsToFetch)
     return insertedRows[0]
   }
 
@@ -49,9 +52,11 @@ export class AbstractRepository<
     filterCriteria?: Record<string, any>,
     sorting?: SortingParam[]
   ): Promise<FullEntityRow[]> {
-    const filters = filterCriteria ? pickWithoutUndefined(filterCriteria, this.filterColumns) : {}
+    const filters = filterCriteria
+      ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
+      : {}
 
-    const queryBuilder = this.knex(this.tableName).select(this.tableColumnsToFetch).where(filters)
+    const queryBuilder = this.knex(this.tableName).select(this.columnsToFetch).where(filters)
 
     if (sorting) {
       queryBuilder.orderBy(sorting)
