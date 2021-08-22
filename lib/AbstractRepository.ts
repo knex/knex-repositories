@@ -1,14 +1,15 @@
 import { Knex } from 'knex'
 import { copyWithoutUndefined, pickWithoutUndefined } from 'knex-utils'
 
-export type SortingParam = {
-  column: string
+export type SortingParam<FullEntityRow> = {
+  column: keyof FullEntityRow & string
   order?: 'desc' | 'asc'
 }
 
-export type RepositoryConfig<NewEntityRow, FullEntityRow> = {
+export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow> = {
   tableName: string
   columnsForCreate?: (keyof NewEntityRow & string)[]
+  columnsForUpdate?: (keyof UpdatedEntityRow & string)[]
   columnsForGetFilters?: (keyof FullEntityRow & string)[]
   columnsToFetch: (keyof FullEntityRow & string)[]
   idColumn: keyof FullEntityRow & string
@@ -16,23 +17,26 @@ export type RepositoryConfig<NewEntityRow, FullEntityRow> = {
 
 export class AbstractRepository<
   NewEntityRow extends Record<string, any> = any,
-  FullEntityRow extends NewEntityRow = any
+  FullEntityRow extends NewEntityRow = any,
+  UpdatedEntityRow extends Record<string, any> = Partial<NewEntityRow>
 > {
   protected readonly knex: Knex
   protected readonly tableName: string
   protected readonly columnsToFetch: string[]
   protected readonly idColumn: string
-  private readonly columnsForGetFilters: string[]
   private readonly columnsForCreate: string[]
+  private readonly columnsForGetFilters?: string[]
+  private readonly columnsForUpdate?: string[]
 
-  constructor(knex: Knex, config: RepositoryConfig<NewEntityRow, FullEntityRow>) {
+  constructor(knex: Knex, config: RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow>) {
     this.knex = knex
 
     this.tableName = config.tableName
     this.idColumn = config.idColumn
     this.columnsToFetch = config.columnsToFetch
     this.columnsForCreate = config.columnsForCreate ?? []
-    this.columnsForGetFilters = config.columnsForGetFilters ?? []
+    this.columnsForGetFilters = config.columnsForGetFilters || undefined
+    this.columnsForUpdate = config.columnsForUpdate || undefined
   }
 
   async create(
@@ -48,13 +52,32 @@ export class AbstractRepository<
     return insertedRows[0]
   }
 
-  async get(
-    filterCriteria?: Record<string, any>,
-    sorting?: SortingParam[]
+  async updateById(
+    id: string | number,
+    updatedFields: UpdatedEntityRow,
+    transactionProvider?: Knex.TransactionProvider
+  ) {
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
+    const updatedColumns = this.columnsForUpdate
+      ? pickWithoutUndefined(updatedFields, this.columnsForUpdate)
+      : copyWithoutUndefined(updatedFields)
+
+    const updatedUserRows = await queryBuilder('users')
+      .where({ [this.idColumn]: id })
+      .update(updatedColumns)
+      .returning(this.columnsToFetch)
+
+    return updatedUserRows[0]
+  }
+
+  async getByCriteria(
+    filterCriteria?: Partial<FullEntityRow>,
+    sorting?: SortingParam<FullEntityRow>[]
   ): Promise<FullEntityRow[]> {
-    const filters = filterCriteria
-      ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
-      : {}
+    const filters =
+      filterCriteria && this.columnsForGetFilters
+        ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
+        : {}
 
     const queryBuilder = this.knex(this.tableName).select(this.columnsToFetch).where(filters)
 

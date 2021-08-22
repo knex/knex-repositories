@@ -20,6 +20,7 @@ export function createUserRepository(knex: Knex) {
     idColumn: 'userId',
     columnsToFetch: ['userId', 'name', 'age', 'createdAt', 'updatedAt'],
     columnsForCreate: ['name', 'age'],
+    columnsForUpdate: ['age'],
     columnsForGetFilters: ['name'],
   })
 }
