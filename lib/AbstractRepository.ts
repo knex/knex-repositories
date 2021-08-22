@@ -12,6 +12,8 @@ export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow> = {
   columnsForUpdate?: (keyof UpdatedEntityRow & string)[]
   columnsForGetFilters?: (keyof FullEntityRow & string)[]
   columnsToFetch: (keyof FullEntityRow & string)[]
+  columnsToFetchList?: (keyof FullEntityRow & string)[]
+  columnsToFetchDetails?: (keyof FullEntityRow & string)[]
   idColumn: keyof FullEntityRow & string
 }
 
@@ -23,6 +25,8 @@ export class AbstractRepository<
   protected readonly knex: Knex
   protected readonly tableName: string
   protected readonly columnsToFetch: string[]
+  protected readonly columnsToFetchList: string[]
+  protected readonly columnsToFetchDetails: string[]
   protected readonly idColumn: string
   private readonly columnsForCreate: string[]
   private readonly columnsForGetFilters?: string[]
@@ -34,6 +38,8 @@ export class AbstractRepository<
     this.tableName = config.tableName
     this.idColumn = config.idColumn
     this.columnsToFetch = config.columnsToFetch
+    this.columnsToFetchList = config.columnsToFetch ?? config.columnsToFetch
+    this.columnsToFetchDetails = config.columnsToFetch ?? config.columnsToFetch
     this.columnsForCreate = config.columnsForCreate ?? []
     this.columnsForGetFilters = config.columnsForGetFilters || undefined
     this.columnsForUpdate = config.columnsForUpdate || undefined
@@ -70,17 +76,30 @@ export class AbstractRepository<
     return updatedUserRows[0]
   }
 
+  async getById(id: string | number, columnsToFetch?: (keyof FullEntityRow & string)[]) {
+    const result = await this.knex(this.tableName)
+      .where({ [this.idColumn]: id })
+      .select(columnsToFetch ?? this.columnsToFetchDetails)
+    return result?.[0]
+  }
+
   async getByCriteria(
     filterCriteria?: Partial<FullEntityRow>,
-    sorting?: SortingParam<FullEntityRow>[]
+    sorting?: SortingParam<FullEntityRow>[],
+    columnsToFetch?: (keyof FullEntityRow & string)[]
   ): Promise<FullEntityRow[]> {
-    const filters =
-      filterCriteria && this.columnsForGetFilters
+    let filters
+    if (filterCriteria) {
+      filters = this.columnsForGetFilters
         ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
-        : {}
+        : copyWithoutUndefined(filterCriteria)
+    } else {
+      filters = {}
+    }
 
-    const queryBuilder = this.knex(this.tableName).select(this.columnsToFetch).where(filters)
-
+    const queryBuilder = this.knex(this.tableName)
+      .select(columnsToFetch ?? this.columnsToFetchList)
+      .where(filters)
     if (sorting) {
       queryBuilder.orderBy(sorting)
     }
