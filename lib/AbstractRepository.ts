@@ -65,7 +65,7 @@ export class AbstractRepository<
     id: string | number,
     updatedFields: UpdatedEntityRow,
     transactionProvider?: Knex.TransactionProvider
-  ) {
+  ): Promise<FullEntityRow | undefined> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const updatedColumns = this.columnsForUpdate
       ? pickWithoutUndefined(updatedFields, this.columnsForUpdate)
@@ -79,7 +79,10 @@ export class AbstractRepository<
     return updatedUserRows[0]
   }
 
-  async getById(id: string | number, columnsToFetch?: (keyof FullEntityRow & string)[]) {
+  async getById(
+    id: string | number,
+    columnsToFetch?: (keyof FullEntityRow & string)[]
+  ): Promise<FullEntityRow | undefined> {
     const result = await this.knex(this.tableName)
       .where({ [this.idColumn]: id })
       .select(columnsToFetch ?? this.columnsToFetchDetails)
