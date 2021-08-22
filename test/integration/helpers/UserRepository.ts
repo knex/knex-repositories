@@ -14,7 +14,7 @@ export type FullUserRow = NewUserRow & {
 
 export type UserRepository = AbstractRepository<NewUserRow, FullUserRow>
 
-export function createUserRepository(knex: Knex) {
+export function createUserRepository(knex: Knex): UserRepository {
   return new AbstractRepository<NewUserRow, FullUserRow>(knex, {
     tableName: 'users',
     idColumn: 'userId',
