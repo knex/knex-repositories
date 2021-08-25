@@ -1,7 +1,7 @@
 import { getAllDbs, getKnexForDb } from './helpers/knexInstanceProvider'
 import { Knex } from 'knex'
 import { createUserTable, dropUserTable } from './helpers/tableCreator'
-import { createUserRepository, UserRepository } from './helpers/UserRepository'
+import { createUserRepository, UserRepository } from './repositories/UserRepository'
 
 describe('AbstractRepository integration', () => {
   getAllDbs().forEach((db) => {
@@ -110,6 +110,61 @@ describe('AbstractRepository integration', () => {
           })
 
           expect(result).toMatchObject([assertUser1, assertUser2])
+        })
+      })
+
+      describe('getSingleByCriteria', () => {
+        it('returns user', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+
+          const result = await userRepository.getSingleByCriteria({ name: USER_2.name })
+
+          expect(result).toMatchObject(assertUser2)
+        })
+
+        it('throws an error if more than one result', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+
+          await expect(userRepository.getSingleByCriteria({})).rejects.toThrow(
+            /Query resulted more than a single result/
+          )
+        })
+
+        it('can return undefined', async () => {
+          const result = await userRepository.getSingleByCriteria({})
+
+          expect(result).toBeUndefined()
+        })
+
+        it('supports columns to fetch', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+
+          const result = await userRepository.getSingleByCriteria(
+            {
+              name: 'test',
+            },
+            ['userId']
+          )
+
+          expect(result).toMatchObject({
+            userId: expect.any(Number),
+          })
+        })
+
+        it('skips unsupported filtering', async () => {
+          await userRepository.create({
+            ...USER_1,
+            age: 25,
+          })
+
+          const result = await userRepository.getSingleByCriteria({
+            age: 30,
+          })
+
+          expect(result).toMatchObject(assertUser1)
         })
       })
 

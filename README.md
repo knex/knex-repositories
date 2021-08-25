@@ -59,6 +59,7 @@ Following methods are exposed by AbstractRepository base class:
 * `updateById(id: string | number, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider): Promise<FullEntityRow | undefined>` - updates single row by id;
 * `getById(id: string | number, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow | undefined>` - retrieves single row by id;
 * `getByCriteria(filterCriteria?: Partial<FullEntityRow>, sorting?: SortingParam<FullEntityRow>[] | null, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow[]>` - retrieves zero or more rows by given criteria;
+* `getSingleByCriteria(filterCriteria: Partial<FullEntityRow>, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow | undefined>` - retrieves single row or undefined by given criteria. Throws an error if more than single row is retrieved;
 * `deleteById(id: string | number, transactionProvider?: Knex.TransactionProvider): Promise<void>` - deletes single row by id. 
 
 [npm-image]: https://img.shields.io/npm/v/knex-repositories.svg
