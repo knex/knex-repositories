@@ -1,5 +1,6 @@
 import { Knex } from 'knex'
 import { copyWithoutUndefined, pickWithoutUndefined } from 'knex-utils'
+import { NonUniqueResultError } from './NonUniqueResultError'
 
 export type SortingParam<FullEntityRow> = {
   column: keyof FullEntityRow & string
@@ -114,6 +115,21 @@ export class AbstractRepository<
 
     const result = await queryBuilder
     return result
+  }
+
+  async getSingleByCriteria(
+    filterCriteria: Partial<FullEntityRow>,
+    columnsToFetch?: (keyof FullEntityRow & string)[]
+  ): Promise<FullEntityRow | undefined> {
+    const result = await this.getByCriteria(
+      filterCriteria,
+      null,
+      columnsToFetch ?? this.columnsToFetchDetails
+    )
+    if (result.length > 1) {
+      throw new NonUniqueResultError('Query resulted more than in a single result', filterCriteria)
+    }
+    return result[0]
   }
 
   async deleteById(
