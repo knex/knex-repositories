@@ -128,7 +128,7 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_2)
 
           await expect(userRepository.getSingleByCriteria({})).rejects.toThrow(
-            /Query resulted more than a single result/
+            /Query resulted more than in a single result/
           )
         })
 

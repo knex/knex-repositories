@@ -127,7 +127,7 @@ export class AbstractRepository<
       columnsToFetch ?? this.columnsToFetchDetails
     )
     if (result.length > 1) {
-      throw new NonUniqueResultError('Query resulted more than a single result', filterCriteria)
+      throw new NonUniqueResultError('Query resulted more than in a single result', filterCriteria)
     }
     return result[0]
   }
