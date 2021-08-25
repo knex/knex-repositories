@@ -71,7 +71,7 @@ export class AbstractRepository<
       ? pickWithoutUndefined(updatedFields, this.columnsForUpdate)
       : copyWithoutUndefined(updatedFields)
 
-    const updatedUserRows = await queryBuilder('users')
+    const updatedUserRows = await queryBuilder(this.tableName)
       .where({ [this.idColumn]: id })
       .update(updatedColumns)
       .returning(this.columnsToFetch)
