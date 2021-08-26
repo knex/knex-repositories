@@ -199,6 +199,38 @@ describe('AbstractRepository integration', () => {
         })
       })
 
+      describe('updateByCriteria', () => {
+        it('updates supported fields', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+
+          await userRepository.updateByCriteria(
+            {
+              name: USER_1.name,
+            },
+            {
+              age: 11,
+              name: 'test14',
+            }
+          )
+          const users = await userRepository.getByCriteria({}, [
+            {
+              column: 'userId',
+              order: 'desc',
+            },
+          ])
+
+          expect(users).toMatchObject([
+            assertUser2,
+            {
+              ...assertUser1,
+              age: 11,
+              name: 'test',
+            },
+          ])
+        })
+      })
+
       describe('deleteById', () => {
         it('deletes user', async () => {
           await userRepository.create(USER_1)
@@ -234,6 +266,75 @@ describe('AbstractRepository integration', () => {
             ...assertUser1,
             ...assertDates,
           })
+        })
+      })
+
+      describe('rollbackTransaction', () => {
+        it('rolls back changes', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+          const users1 = await userRepository.getByCriteria({
+            name: 'test',
+          })
+          const [user1] = users1
+
+          const trxProvider = userRepository.createTransactionProvider()
+          await userRepository.updateById(
+            user1.userId,
+            {
+              age: 11,
+              name: 'test14',
+            },
+            trxProvider
+          )
+          await userRepository.rollbackTransaction(trxProvider)
+
+          const users = await userRepository.getByCriteria({}, [
+            {
+              column: 'userId',
+              order: 'desc',
+            },
+          ])
+
+          expect(users).toMatchObject([assertUser2, assertUser1])
+        })
+      })
+
+      describe('commitTransaction', () => {
+        it('commits changes', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+          const users1 = await userRepository.getByCriteria({
+            name: 'test',
+          })
+          const [user1] = users1
+
+          const trxProvider = userRepository.createTransactionProvider()
+          await userRepository.updateById(
+            user1.userId,
+            {
+              age: 11,
+              name: 'test14',
+            },
+            trxProvider
+          )
+          await userRepository.commitTransaction(trxProvider)
+
+          const users = await userRepository.getByCriteria({}, [
+            {
+              column: 'userId',
+              order: 'desc',
+            },
+          ])
+
+          expect(users).toMatchObject([
+            assertUser2,
+            {
+              ...assertUser1,
+              age: 11,
+              name: 'test',
+            },
+          ])
         })
       })
     })

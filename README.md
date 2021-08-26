@@ -57,6 +57,7 @@ Following methods are exposed by AbstractRepository base class:
 
 * `create(newEntityRow: NewEntityRow, transactionProvider?: Knex.TransactionProvider): Promise<FullEntityRow>` - inserts new row;
 * `updateById(id: string | number, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider): Promise<FullEntityRow | undefined>` - updates single row by id;
+* `updateByCriteria(filterCriteria: Partial<FullEntityRow>, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider | null, sorting?: SortingParam<FullEntityRow>[] | null): Promise<FullEntityRow[]>` - updates zero or more rows by given criteria;
 * `getById(id: string | number, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow | undefined>` - retrieves single row by id;
 * `getByCriteria(filterCriteria?: Partial<FullEntityRow>, sorting?: SortingParam<FullEntityRow>[] | null, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow[]>` - retrieves zero or more rows by given criteria;
 * `getSingleByCriteria(filterCriteria: Partial<FullEntityRow>, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow | undefined>` - retrieves single row or undefined by given criteria. Throws an error if more than single row is retrieved;

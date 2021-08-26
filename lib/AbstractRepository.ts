@@ -80,6 +80,33 @@ export class AbstractRepository<
     return updatedUserRows[0]
   }
 
+  async updateByCriteria(
+    filterCriteria: Partial<FullEntityRow>,
+    updatedFields: UpdatedEntityRow,
+    transactionProvider?: Knex.TransactionProvider | null,
+    sorting?: SortingParam<FullEntityRow>[] | null
+  ): Promise<FullEntityRow[]> {
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
+    const updatedColumns = this.columnsForUpdate
+      ? pickWithoutUndefined(updatedFields, this.columnsForUpdate)
+      : copyWithoutUndefined(updatedFields)
+    const filters = this.columnsForGetFilters
+      ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
+      : copyWithoutUndefined(filterCriteria)
+
+    const updatedUserRows = await queryBuilder(this.tableName)
+      .where(filters)
+      .update(updatedColumns)
+      .returning(this.columnsToFetch)
+
+    const sortParam = sorting ?? this.defaultOrderBy
+    if (sortParam) {
+      queryBuilder.orderBy(sortParam)
+    }
+
+    return updatedUserRows
+  }
+
   async getById(
     id: string | number,
     columnsToFetch?: (keyof FullEntityRow & string)[]
@@ -144,7 +171,7 @@ export class AbstractRepository<
       .del()
   }
 
-  getTransactionProvider(): any {
+  createTransactionProvider(): Knex.TransactionProvider {
     return this.knex.transactionProvider()
   }
 
@@ -158,7 +185,7 @@ export class AbstractRepository<
     await trx.rollback()
   }
 
-  async getKnexOrTransaction(transactionProvider?: Knex.TransactionProvider): Promise<Knex> {
+  async getKnexOrTransaction(transactionProvider?: Knex.TransactionProvider | null): Promise<Knex> {
     return transactionProvider ? await transactionProvider() : this.knex
   }
 }
