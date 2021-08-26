@@ -171,6 +171,18 @@ export class AbstractRepository<
       .del()
   }
 
+  async deleteByCriteria(
+    filterCriteria: Partial<FullEntityRow>,
+    transactionProvider?: Knex.TransactionProvider
+  ): Promise<void> {
+    const filters = this.columnsForGetFilters
+      ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
+      : copyWithoutUndefined(filterCriteria)
+
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
+    await queryBuilder(this.tableName).where(filters).del()
+  }
+
   createTransactionProvider(): Knex.TransactionProvider {
     return this.knex.transactionProvider()
   }

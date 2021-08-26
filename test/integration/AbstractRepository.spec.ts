@@ -246,6 +246,20 @@ describe('AbstractRepository integration', () => {
         })
       })
 
+      describe('deleteByCriteria', () => {
+        it('deletes user', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+
+          await userRepository.deleteByCriteria({
+            name: USER_1.name,
+          })
+          const users2 = await userRepository.getByCriteria()
+
+          expect(users2).toMatchObject([assertUser2])
+        })
+      })
+
       describe('getById', () => {
         it('retrieves user details', async () => {
           await userRepository.create(USER_1)
