@@ -58,11 +58,14 @@ Following methods are exposed by AbstractRepository base class:
 * `create(newEntityRow: NewEntityRow, transactionProvider?: Knex.TransactionProvider): Promise<FullEntityRow>` - inserts new row;
 * `updateById(id: string | number, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider): Promise<FullEntityRow | undefined>` - updates single row by id;
 * `updateByCriteria(filterCriteria: Partial<FullEntityRow>, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider | null, sorting?: SortingParam<FullEntityRow>[] | null): Promise<FullEntityRow[]>` - updates zero or more rows by given criteria;
-* `getById(id: string | number, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow | undefined>` - retrieves single row by id;
-* `getByCriteria(filterCriteria?: Partial<FullEntityRow>, sorting?: SortingParam<FullEntityRow>[] | null, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow[]>` - retrieves zero or more rows by given criteria;
+* `updateSingleByCriteria(filterCriteria: Partial<FullEntityRow>, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider | null): Promise<FullEntityRow>` - updates single row by a given criteria. If there are no rows or more than one, throws an error;
+* `getById(id: string | number, columnsToFetch?: (keyof FullEntityRow & string)[], transactionProvider?: Knex.TransactionProvider | null): Promise<FullEntityRow | undefined>` - retrieves single row by id;
+* `getByCriteria(filterCriteria?: Partial<FullEntityRow>, sorting?: SortingParam<FullEntityRow>[] | null, columnsToFetch?: (keyof FullEntityRow & string)[], transactionProvider?: Knex.TransactionProvider | null): Promise<FullEntityRow[]>` - retrieves zero or more rows by given criteria;
 * `getSingleByCriteria(filterCriteria: Partial<FullEntityRow>, columnsToFetch?: (keyof FullEntityRow & string)[]): Promise<FullEntityRow | undefined>` - retrieves single row or undefined by given criteria. Throws an error if more than single row is retrieved;
 * `deleteById(id: string | number, transactionProvider?: Knex.TransactionProvider): Promise<void>` - deletes single row by id. 
 * `deleteByCriteria(filterCriteria: Partial<FullEntityRow>, transactionProvider?: Knex.TransactionProvider): Promise<void>` - deletes zero or more rows by given criteria.
+
+Note that both create and update methods are implemented in a way that works around lack of `returning` operation support in MySQL and SQLite. This results in additional SELECT query being done to retrieve missing data. If there is popular demand to make this functionality optional, there will be a disable option in the future.
 
 [npm-image]: https://img.shields.io/npm/v/knex-repositories.svg
 [npm-url]: https://npmjs.org/package/knex-repositories
