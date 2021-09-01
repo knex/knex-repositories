@@ -1,6 +1,8 @@
 import { Knex } from 'knex'
 import { copyWithoutUndefined, pickWithoutUndefined } from 'knex-utils'
 import { NonUniqueResultError } from './NonUniqueResultError'
+import { NoEntityExistsError } from './NoEntityExistsError'
+import { doesSupportReturning, doesSupportUpdateOrderBy } from './dbSupportHelper'
 
 export type SortingParam<FullEntityRow> = {
   column: keyof FullEntityRow & string
@@ -59,6 +61,12 @@ export class AbstractRepository<
     const insertedRows = await queryBuilder(this.tableName)
       .insert(insertRow)
       .returning(this.columnsToFetch)
+
+    if (!doesSupportReturning(this.knex)) {
+      const insertedRow = await this.getById(insertedRows[0], undefined, transactionProvider)
+      return insertedRow!
+    }
+
     return insertedRows[0]
   }
 
@@ -80,6 +88,34 @@ export class AbstractRepository<
     return updatedUserRows[0]
   }
 
+  async updateSingleByCriteria(
+    filterCriteria: Partial<FullEntityRow>,
+    updatedFields: UpdatedEntityRow,
+    transactionProvider?: Knex.TransactionProvider | null
+  ): Promise<FullEntityRow> {
+    const result = await this.updateByCriteria(filterCriteria, updatedFields, transactionProvider)
+
+    let returningResult
+    if (doesSupportReturning(this.knex)) {
+      returningResult = result
+    } else {
+      returningResult = await this.getByCriteria(
+        filterCriteria,
+        undefined,
+        this.columnsToFetchDetails,
+        transactionProvider
+      )
+    }
+
+    if (returningResult.length > 1) {
+      throw new NonUniqueResultError('Query updated more than one row', filterCriteria)
+    }
+    if (returningResult.length === 0) {
+      throw new NoEntityExistsError('Query updated no rows', filterCriteria)
+    }
+    return result[0]
+  }
+
   async updateByCriteria(
     filterCriteria: Partial<FullEntityRow>,
     updatedFields: UpdatedEntityRow,
@@ -94,24 +130,27 @@ export class AbstractRepository<
       ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
       : copyWithoutUndefined(filterCriteria)
 
-    const updatedUserRows = await queryBuilder(this.tableName)
+    const qb = queryBuilder(this.tableName)
       .where(filters)
       .update(updatedColumns)
       .returning(this.columnsToFetch)
 
     const sortParam = sorting ?? this.defaultOrderBy
-    if (sortParam) {
-      queryBuilder.orderBy(sortParam)
+    if (doesSupportUpdateOrderBy(this.knex) && sortParam) {
+      qb.orderBy(sortParam)
     }
 
-    return updatedUserRows
+    const result = await qb
+    return result
   }
 
   async getById(
     id: string | number,
-    columnsToFetch?: (keyof FullEntityRow & string)[]
+    columnsToFetch?: (keyof FullEntityRow & string)[],
+    transactionProvider?: Knex.TransactionProvider | null
   ): Promise<FullEntityRow | undefined> {
-    const result = await this.knex(this.tableName)
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
+    const result = await queryBuilder(this.tableName)
       .where({ [this.idColumn]: id })
       .select(columnsToFetch ?? this.columnsToFetchDetails)
     return result?.[0]
@@ -120,8 +159,10 @@ export class AbstractRepository<
   async getByCriteria(
     filterCriteria?: Partial<FullEntityRow>,
     sorting?: SortingParam<FullEntityRow>[] | null,
-    columnsToFetch?: (keyof FullEntityRow & string)[]
+    columnsToFetch?: (keyof FullEntityRow & string)[],
+    transactionProvider?: Knex.TransactionProvider | null
   ): Promise<FullEntityRow[]> {
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     let filters
     if (filterCriteria) {
       filters = this.columnsForGetFilters
@@ -131,16 +172,16 @@ export class AbstractRepository<
       filters = {}
     }
 
-    const queryBuilder = this.knex(this.tableName)
+    const qb = queryBuilder(this.tableName)
       .select(columnsToFetch ?? this.columnsToFetchList)
       .where(filters)
 
     const sortParam = sorting ?? this.defaultOrderBy
     if (sortParam) {
-      queryBuilder.orderBy(sortParam)
+      qb.orderBy(sortParam)
     }
 
-    const result = await queryBuilder
+    const result = await qb
     return result
   }
 
