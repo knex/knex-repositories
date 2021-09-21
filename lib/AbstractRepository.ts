@@ -92,7 +92,7 @@ export class AbstractRepository<
     if (!doesSupportReturning(this.knex)) {
       const insertedRowsManual: FullEntityRow[] = []
       for (const row of insertedRows) {
-        const getEntry = await this.getById(row[0], undefined, transactionProvider)
+        const getEntry = await this.getById(row, undefined, transactionProvider)
         if (getEntry) insertedRowsManual.push(getEntry)
       }
       return insertedRowsManual!
