@@ -47,6 +47,12 @@ describe('AbstractRepository integration', () => {
 
           expect(result).toMatchObject(assertUser1)
         })
+
+        it('creates several new users', async () => {
+          const result = await userRepository.createBulk([USER_1, USER_2])
+
+          expect(result).toMatchObject([assertUser1, assertUser2])
+        })
       })
 
       describe('getByCriteria', () => {
