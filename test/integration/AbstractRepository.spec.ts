@@ -53,6 +53,12 @@ describe('AbstractRepository integration', () => {
 
           expect(result).toMatchObject([assertUser1, assertUser2])
         })
+
+        it('creates several new users with chunk size set to 1', async () => {
+          const result = await userRepository.createBulk([USER_1, USER_2], undefined, 1)
+
+          expect(result).toMatchObject([assertUser1, assertUser2])
+        })
       })
 
       describe('getByCriteria', () => {
