@@ -16,6 +16,7 @@
     "db:start": "docker-compose -f scripts/docker-compose.yml up --build -d mysql postgres mssql && docker-compose -f scripts/docker-compose.yml up waitmssql waitmysql waitpostgres",
     "db:stop": "docker-compose -f scripts/docker-compose.yml down",
     "test": "jest --config=jest.config.json --runInBand",
+    "test:mysql": "cross-env DB=mysql jest --config=jest.config.json --runInBand",
     "test:update-snapshots": "jest --config=jest.config.json --runInBand -u",
     "test:coverage": "jest --config=jest.config.json --coverage --runInBand",
     "test:ci": "npm run lint && npm run test:coverage",
@@ -27,24 +28,25 @@
     "knex": "^0.95.10"
   },
   "devDependencies": {
-    "@types/jest": "^27.0.1",
-    "@types/node": "^16.7.2",
-    "@typescript-eslint/eslint-plugin": "^4.29.3",
-    "@typescript-eslint/parser": "^4.29.3",
+    "@types/jest": "^27.0.2",
+    "@types/node": "^16.9.6",
+    "@typescript-eslint/eslint-plugin": "^4.31.2",
+    "@typescript-eslint/parser": "^4.31.2",
+    "cross-env": "^7.0.3",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^3.4.1",
+    "eslint-plugin-prettier": "^4.0.0",
     "jest": "^27.0.6",
-    "knex": "^0.95.10",
+    "knex": "^0.95.11",
     "knex-utils": "^5.4.0",
     "mysql": "^2.18.1",
     "mysql2": "^2.3.0",
     "pg": "^8.7.1",
-    "prettier": "^2.3.2",
+    "prettier": "^2.4.1",
     "sqlite3": "^5.0.2",
-    "tedious": "^12.0.0",
+    "tedious": "^12.2.0",
     "ts-jest": "^27.0.5",
-    "typescript": "4.3.5"
+    "typescript": "4.4.3"
   },
   "engines": {
     "node": ">=10"
