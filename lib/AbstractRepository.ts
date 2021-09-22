@@ -89,16 +89,24 @@ export class AbstractRepository<
       )
     }
 
-    if (!doesSupportReturning(this.knex)) {
-      const insertedRowsManual: FullEntityRow[] = []
-      for (const row of insertedRows) {
-        const getEntry = await this.getById(row, undefined, transactionProvider)
-        if (getEntry) insertedRowsManual.push(getEntry)
-      }
-      return insertedRowsManual!
-    }
-
     return insertedRows
+  }
+
+  async createBulkNoReturning(
+    newEntityRows: NewEntityRow[],
+    transactionProvider?: Knex.TransactionProvider,
+    chunkSize = 1000
+  ): Promise<void> {
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
+    const insertRows = newEntityRows.map((newEntityRow) =>
+      pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+    )
+
+    const chunks = chunk(insertRows, chunkSize)
+
+    for (const rows of chunks) {
+      await queryBuilder(this.tableName).insert(rows)
+    }
   }
 
   async updateById(

@@ -56,6 +56,8 @@ export function createUserRepository(knex: Knex): UserRepository {
 Following methods are exposed by AbstractRepository base class:
 
 * `create(newEntityRow: NewEntityRow, transactionProvider?: Knex.TransactionProvider): Promise<FullEntityRow>` - inserts new row;
+* `createBulk(newEntityRows: NewEntityRow[], transactionProvider?: Knex.TransactionProvider, chunkSize = 1000): Promise<FullEntityRow[]>` - inserts multiple new rows, returning inserted values. Does not return inserted values when using MySQL or SQLite;
+* `createBulkNoReturning(newEntityRows: NewEntityRow[], transactionProvider?: Knex.TransactionProvider, chunkSize = 1000): Promise<void>` - inserts multiple new rows without returning inserted values;
 * `updateById(id: string | number, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider): Promise<FullEntityRow | undefined>` - updates single row by id;
 * `updateByCriteria(filterCriteria: Partial<FullEntityRow>, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider | null, sorting?: SortingParam<FullEntityRow>[] | null): Promise<FullEntityRow[]>` - updates zero or more rows by given criteria;
 * `updateSingleByCriteria(filterCriteria: Partial<FullEntityRow>, updatedFields: UpdatedEntityRow, transactionProvider?: Knex.TransactionProvider | null): Promise<FullEntityRow>` - updates single row by a given criteria. If there are no rows or more than one, throws an error;
