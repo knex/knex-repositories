@@ -1,5 +1,5 @@
 import { Knex } from 'knex'
-import { copyWithoutUndefined, pickWithoutUndefined } from 'knex-utils'
+import { chunk, copyWithoutUndefined, pickWithoutUndefined } from 'knex-utils'
 import { NonUniqueResultError } from './NonUniqueResultError'
 import { NoEntityExistsError } from './NoEntityExistsError'
 import { doesSupportReturning, doesSupportUpdateOrderBy } from './dbSupportHelper'
@@ -68,6 +68,45 @@ export class AbstractRepository<
     }
 
     return insertedRows[0]
+  }
+
+  async createBulk(
+    newEntityRows: NewEntityRow[],
+    transactionProvider?: Knex.TransactionProvider,
+    chunkSize = 1000
+  ): Promise<FullEntityRow[]> {
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
+    const insertRows = newEntityRows.map((newEntityRow) =>
+      pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+    )
+
+    const chunks = chunk(insertRows, chunkSize)
+
+    const insertedRows = []
+    for (const rows of chunks) {
+      insertedRows.push(
+        ...(await queryBuilder(this.tableName).insert(rows).returning(this.columnsToFetch))
+      )
+    }
+
+    return insertedRows
+  }
+
+  async createBulkNoReturning(
+    newEntityRows: NewEntityRow[],
+    transactionProvider?: Knex.TransactionProvider,
+    chunkSize = 1000
+  ): Promise<void> {
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
+    const insertRows = newEntityRows.map((newEntityRow) =>
+      pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+    )
+
+    const chunks = chunk(insertRows, chunkSize)
+
+    for (const rows of chunks) {
+      await queryBuilder(this.tableName).insert(rows)
+    }
   }
 
   async updateById(
