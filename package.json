@@ -44,7 +44,7 @@
     "pg": "^8.7.1",
     "prettier": "^2.4.1",
     "sqlite3": "^5.0.2",
-    "tedious": "^12.2.0",
+    "tedious": "^13.0.4",
     "ts-jest": "^27.0.5",
     "typescript": "4.4.3"
   },
