@@ -25,7 +25,7 @@ export class AbstractRepository<
   NewEntityRow extends Record<string, any> = any,
   FullEntityRow extends NewEntityRow = any,
   UpdatedEntityRow extends Record<string, any> = Partial<NewEntityRow>,
-  Filters extends Record<string, any> = Partial<FullEntityRow>,
+  Filters extends Record<string, any> = Partial<FullEntityRow>
 > {
   protected readonly knex: Knex
   protected readonly tableName: string
@@ -38,7 +38,10 @@ export class AbstractRepository<
   private readonly columnsForFilters?: string[]
   private readonly columnsForUpdate?: string[]
 
-  constructor(knex: Knex, config: RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow, Filters>) {
+  constructor(
+    knex: Knex,
+    config: RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow, Filters>
+  ) {
     this.knex = knex
 
     this.tableName = config.tableName
