@@ -6,16 +6,22 @@ export type NewUserRow = {
   age?: number
 }
 
+export type Filters = {
+  name?: string
+}
+
+export type UpdatedUserRow = Partial<NewUserRow>
+
 export type FullUserRow = NewUserRow & {
   userId: number
   createdAt: Date
   updatedAt: Date
 }
 
-export type UserRepository = AbstractRepository<NewUserRow, FullUserRow>
+export type UserRepository = AbstractRepository<NewUserRow, FullUserRow, UpdatedUserRow, Filters>
 
 export function createUserRepository(knex: Knex): UserRepository {
-  return new AbstractRepository<NewUserRow, FullUserRow>(knex, {
+  return new AbstractRepository<NewUserRow, FullUserRow, UpdatedUserRow, Filters>(knex, {
     tableName: 'users',
     idColumn: 'userId',
     defaultOrderBy: [
@@ -27,6 +33,6 @@ export function createUserRepository(knex: Knex): UserRepository {
     columnsToFetch: ['userId', 'name', 'age', 'createdAt', 'updatedAt'],
     columnsForCreate: ['name', 'age'],
     columnsForUpdate: ['age'],
-    columnsForGetFilters: ['name'],
+    columnsForFilters: ['name'],
   })
 }

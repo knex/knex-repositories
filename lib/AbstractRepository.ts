@@ -9,13 +9,13 @@ export type SortingParam<FullEntityRow> = {
   order?: 'desc' | 'asc'
 }
 
-export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow> = {
+export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow, Filters> = {
   tableName: string
   idColumn: keyof FullEntityRow & string
   defaultOrderBy?: SortingParam<FullEntityRow>[]
   columnsForCreate?: (keyof NewEntityRow & string)[]
   columnsForUpdate?: (keyof UpdatedEntityRow & string)[]
-  columnsForGetFilters?: (keyof FullEntityRow & string)[]
+  columnsForFilters?: (keyof Filters & string)[]
   columnsToFetch: (keyof FullEntityRow & string)[]
   columnsToFetchList?: (keyof FullEntityRow & string)[]
   columnsToFetchDetails?: (keyof FullEntityRow & string)[]
@@ -24,7 +24,8 @@ export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow> = {
 export class AbstractRepository<
   NewEntityRow extends Record<string, any> = any,
   FullEntityRow extends NewEntityRow = any,
-  UpdatedEntityRow extends Record<string, any> = Partial<NewEntityRow>
+  UpdatedEntityRow extends Record<string, any> = Partial<NewEntityRow>,
+  Filters extends Record<string, any> = Partial<FullEntityRow>
 > {
   protected readonly knex: Knex
   protected readonly tableName: string
@@ -34,10 +35,13 @@ export class AbstractRepository<
   protected readonly idColumn: string
   protected readonly defaultOrderBy?: SortingParam<FullEntityRow>[]
   private readonly columnsForCreate: string[]
-  private readonly columnsForGetFilters?: string[]
+  private readonly columnsForFilters?: string[]
   private readonly columnsForUpdate?: string[]
 
-  constructor(knex: Knex, config: RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow>) {
+  constructor(
+    knex: Knex,
+    config: RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow, Filters>
+  ) {
     this.knex = knex
 
     this.tableName = config.tableName
@@ -47,7 +51,7 @@ export class AbstractRepository<
     this.columnsToFetchList = config.columnsToFetch ?? config.columnsToFetch
     this.columnsToFetchDetails = config.columnsToFetch ?? config.columnsToFetch
     this.columnsForCreate = config.columnsForCreate ?? []
-    this.columnsForGetFilters = config.columnsForGetFilters || undefined
+    this.columnsForFilters = config.columnsForFilters || undefined
     this.columnsForUpdate = config.columnsForUpdate || undefined
   }
 
@@ -128,7 +132,7 @@ export class AbstractRepository<
   }
 
   async updateSingleByCriteria(
-    filterCriteria: Partial<FullEntityRow>,
+    filterCriteria: Filters,
     updatedFields: UpdatedEntityRow,
     transactionProvider?: Knex.TransactionProvider | null
   ): Promise<FullEntityRow> {
@@ -156,7 +160,7 @@ export class AbstractRepository<
   }
 
   async updateByCriteria(
-    filterCriteria: Partial<FullEntityRow>,
+    filterCriteria: Filters,
     updatedFields: UpdatedEntityRow,
     transactionProvider?: Knex.TransactionProvider | null,
     sorting?: SortingParam<FullEntityRow>[] | null
@@ -165,8 +169,8 @@ export class AbstractRepository<
     const updatedColumns = this.columnsForUpdate
       ? pickWithoutUndefined(updatedFields, this.columnsForUpdate)
       : copyWithoutUndefined(updatedFields)
-    const filters = this.columnsForGetFilters
-      ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
+    const filters = this.columnsForFilters
+      ? pickWithoutUndefined(filterCriteria, this.columnsForFilters)
       : copyWithoutUndefined(filterCriteria)
 
     const qb = queryBuilder(this.tableName)
@@ -196,7 +200,7 @@ export class AbstractRepository<
   }
 
   async getByCriteria(
-    filterCriteria?: Partial<FullEntityRow>,
+    filterCriteria?: Filters,
     sorting?: SortingParam<FullEntityRow>[] | null,
     columnsToFetch?: (keyof FullEntityRow & string)[],
     transactionProvider?: Knex.TransactionProvider | null
@@ -204,8 +208,8 @@ export class AbstractRepository<
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     let filters
     if (filterCriteria) {
-      filters = this.columnsForGetFilters
-        ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
+      filters = this.columnsForFilters
+        ? pickWithoutUndefined(filterCriteria, this.columnsForFilters)
         : copyWithoutUndefined(filterCriteria)
     } else {
       filters = {}
@@ -225,7 +229,7 @@ export class AbstractRepository<
   }
 
   async getSingleByCriteria(
-    filterCriteria: Partial<FullEntityRow>,
+    filterCriteria: Filters,
     columnsToFetch?: (keyof FullEntityRow & string)[]
   ): Promise<FullEntityRow | undefined> {
     const result = await this.getByCriteria(
@@ -252,11 +256,11 @@ export class AbstractRepository<
   }
 
   async deleteByCriteria(
-    filterCriteria: Partial<FullEntityRow>,
+    filterCriteria: Filters,
     transactionProvider?: Knex.TransactionProvider
   ): Promise<void> {
-    const filters = this.columnsForGetFilters
-      ? pickWithoutUndefined(filterCriteria, this.columnsForGetFilters)
+    const filters = this.columnsForFilters
+      ? pickWithoutUndefined(filterCriteria, this.columnsForFilters)
       : copyWithoutUndefined(filterCriteria)
 
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
