@@ -151,7 +151,7 @@ describe('AbstractRepository integration', () => {
 
           const result = await userRepository.getByCriteria({
             age: 30,
-          })
+          } as any)
 
           expect(result).toMatchObject([assertUser1, assertUser2])
         })
@@ -206,7 +206,7 @@ describe('AbstractRepository integration', () => {
 
           const result = await userRepository.getSingleByCriteria({
             age: 30,
-          })
+          } as any)
 
           expect(result).toMatchObject(assertUser1)
         })
