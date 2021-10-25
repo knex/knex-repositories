@@ -16,7 +16,7 @@ export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow, Filt
   columnsForCreate?: (keyof NewEntityRow & string)[]
   columnsForUpdate?: (keyof UpdatedEntityRow & string)[]
   columnsForFilters?: (keyof Filters & string)[]
-  columnsToFetch: (keyof FullEntityRow & string)[]
+  columnsToFetch?: (keyof FullEntityRow & string)[]
   columnsToFetchList?: (keyof FullEntityRow & string)[]
   columnsToFetchDetails?: (keyof FullEntityRow & string)[]
 }
@@ -48,7 +48,7 @@ export class AbstractRepository<
   protected readonly columnsToFetchDetails: string[]
   protected readonly idColumn: string
   protected readonly defaultOrderBy?: SortingParam<FullEntityRow>[]
-  private readonly columnsForCreate: string[]
+  private readonly columnsForCreate?: string[]
   private readonly columnsForFilters?: string[]
   private readonly columnsForUpdate?: string[]
 
@@ -61,10 +61,10 @@ export class AbstractRepository<
     this.tableName = config.tableName
     this.idColumn = config.idColumn
     this.defaultOrderBy = config.defaultOrderBy
-    this.columnsToFetch = config.columnsToFetch
-    this.columnsToFetchList = config.columnsToFetch ?? config.columnsToFetch
-    this.columnsToFetchDetails = config.columnsToFetch ?? config.columnsToFetch
-    this.columnsForCreate = config.columnsForCreate ?? []
+    this.columnsToFetch = config.columnsToFetch || ['*']
+    this.columnsToFetchList = config.columnsToFetch ?? config.columnsToFetch ?? ['*']
+    this.columnsToFetchDetails = config.columnsToFetch ?? config.columnsToFetch ?? ['*']
+    this.columnsForCreate = config.columnsForCreate || undefined
     this.columnsForFilters = config.columnsForFilters || undefined
     this.columnsForUpdate = config.columnsForUpdate || undefined
   }
@@ -74,7 +74,9 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider
   ): Promise<FullEntityRow> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
-    const insertRow = pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+    const insertRow = this.columnsForCreate
+      ? pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+      : copyWithoutUndefined(newEntityRow)
 
     const insertedRows = await queryBuilder(this.tableName)
       .insert(insertRow)
@@ -95,7 +97,9 @@ export class AbstractRepository<
   ): Promise<FullEntityRow[]> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const insertRows = newEntityRows.map((newEntityRow) =>
-      pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+      this.columnsForCreate
+        ? pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+        : copyWithoutUndefined(newEntityRow)
     )
 
     const chunks = chunk(insertRows, params.chunkSize)
@@ -117,7 +121,9 @@ export class AbstractRepository<
   ): Promise<void> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const insertRows = newEntityRows.map((newEntityRow) =>
-      pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+      this.columnsForCreate
+        ? pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+        : copyWithoutUndefined(newEntityRow)
     )
 
     const chunks = chunk(insertRows, params.chunkSize)
