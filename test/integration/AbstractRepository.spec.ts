@@ -4,15 +4,18 @@ import { createUserTable, dropUserTable } from './helpers/tableCreator'
 import { createUserRepository, UserRepository } from './repositories/UserRepository'
 import { doesSupportReturning } from '../../lib/dbSupportHelper'
 import { isMysql, isPostgreSQL, isSQLite } from './helpers/dbHelpers'
+import { createUserRepositoryLite, UserRepositoryLite } from './repositories/UserRepositoryLite'
 
 describe('AbstractRepository integration', () => {
   getAllDbs().forEach((db) => {
     describe(db, () => {
       let knex: Knex
       let userRepository: UserRepository
+      let userRepositoryLite: UserRepositoryLite
       beforeEach(async () => {
         knex = getKnexForDb(db)
         userRepository = createUserRepository(knex)
+        userRepositoryLite = createUserRepositoryLite(knex)
         await createUserTable(knex)
       })
 
@@ -60,6 +63,12 @@ describe('AbstractRepository integration', () => {
 
           expect(result).toMatchObject(assertUser1)
         })
+
+        it('creates new user with lite config', async () => {
+          const result = await userRepositoryLite.create(USER_1)
+
+          expect(result).toMatchObject(assertUser1)
+        })
       })
 
       describe('createBulk', () => {
@@ -69,6 +78,18 @@ describe('AbstractRepository integration', () => {
           }
 
           const result = await userRepository.createBulk([USER_1, USER_2], undefined, {
+            chunkSize: 10,
+          })
+
+          expect(result).toMatchObject([assertUser1, assertUser2])
+        })
+
+        it('creates several new users with lite config', async () => {
+          if (!doesSupportReturning(knex)) {
+            return
+          }
+
+          const result = await userRepositoryLite.createBulk([USER_1, USER_2], undefined, {
             chunkSize: 10,
           })
 
@@ -114,6 +135,15 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_2)
 
           const result = await userRepository.getByCriteria()
+
+          expect(result).toMatchObject([assertUser1, assertUser2])
+        })
+
+        it('returns users with lite config', async () => {
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+
+          const result = await userRepositoryLite.getByCriteria()
 
           expect(result).toMatchObject([assertUser1, assertUser2])
         })
