@@ -68,7 +68,9 @@ describe('AbstractRepository integration', () => {
             return
           }
 
-          const result = await userRepository.createBulk([USER_1, USER_2], undefined, 10)
+          const result = await userRepository.createBulk([USER_1, USER_2], undefined, {
+            chunkSize: 10,
+          })
 
           expect(result).toMatchObject([assertUser1, assertUser2])
         })
@@ -78,7 +80,9 @@ describe('AbstractRepository integration', () => {
             return
           }
 
-          const result = await userRepository.createBulk([USER_1, USER_2, USER_3], undefined, 2)
+          const result = await userRepository.createBulk([USER_1, USER_2, USER_3], undefined, {
+            chunkSize: 2,
+          })
 
           expect(result).toMatchObject([assertUser1, assertUser2, assertUser3])
         })
@@ -95,7 +99,9 @@ describe('AbstractRepository integration', () => {
           const result = await userRepository.createBulkNoReturning(
             [USER_1, USER_2, USER_3],
             undefined,
-            2
+            {
+              chunkSize: 2,
+            }
           )
 
           expect(result).toBeUndefined()
@@ -125,12 +131,14 @@ describe('AbstractRepository integration', () => {
           await userRepository.create(USER_1)
           await userRepository.create(USER_2)
 
-          const result = await userRepository.getByCriteria({}, [
-            {
-              column: 'userId',
-              order: 'desc',
-            },
-          ])
+          const result = await userRepository.getByCriteria({}, null, {
+            sorting: [
+              {
+                column: 'userId',
+                order: 'desc',
+              },
+            ],
+          })
 
           expect(result).toMatchObject([assertUser2, assertUser1])
         })
@@ -191,7 +199,9 @@ describe('AbstractRepository integration', () => {
             {
               name: 'test',
             },
-            ['userId']
+            {
+              columnsToFetch: ['userId'],
+            }
           )
 
           expect(result).toMatchObject({
@@ -226,12 +236,14 @@ describe('AbstractRepository integration', () => {
             age: 11,
             name: 'test14',
           })
-          const users = await userRepository.getByCriteria({}, [
-            {
-              column: 'userId',
-              order: 'desc',
-            },
-          ])
+          const users = await userRepository.getByCriteria({}, null, {
+            sorting: [
+              {
+                column: 'userId',
+                order: 'desc',
+              },
+            ],
+          })
 
           expect(users).toMatchObject([
             assertUser2,
@@ -258,12 +270,14 @@ describe('AbstractRepository integration', () => {
               name: 'test14',
             }
           )
-          const users = await userRepository.getByCriteria({}, [
-            {
-              column: 'userId',
-              order: 'desc',
-            },
-          ])
+          const users = await userRepository.getByCriteria({}, null, {
+            sorting: [
+              {
+                column: 'userId',
+                order: 'desc',
+              },
+            ],
+          })
 
           expect(users).toMatchObject([
             assertUser2,
@@ -290,12 +304,14 @@ describe('AbstractRepository integration', () => {
               name: 'test14',
             }
           )
-          const users = await userRepository.getByCriteria({}, [
-            {
-              column: 'userId',
-              order: 'desc',
-            },
-          ])
+          const users = await userRepository.getByCriteria({}, null, {
+            sorting: [
+              {
+                column: 'userId',
+                order: 'desc',
+              },
+            ],
+          })
 
           expect(users).toMatchObject([
             assertUser2,
@@ -451,7 +467,7 @@ describe('AbstractRepository integration', () => {
               },
               trxProvider
             )
-            const result = await userRepository.getById(user1.userId, undefined, trxProvider)
+            const result = await userRepository.getById(user1.userId, trxProvider)
             expect(result!.age).toEqual(99)
           } finally {
             await userRepository.rollbackTransaction(trxProvider)
@@ -479,12 +495,14 @@ describe('AbstractRepository integration', () => {
           )
           await userRepository.rollbackTransaction(trxProvider)
 
-          const users = await userRepository.getByCriteria({}, [
-            {
-              column: 'userId',
-              order: 'desc',
-            },
-          ])
+          const users = await userRepository.getByCriteria({}, null, {
+            sorting: [
+              {
+                column: 'userId',
+                order: 'desc',
+              },
+            ],
+          })
 
           expect(users).toMatchObject([assertUser2, assertUser1])
         })
@@ -510,12 +528,14 @@ describe('AbstractRepository integration', () => {
           )
           await userRepository.commitTransaction(trxProvider)
 
-          const users = await userRepository.getByCriteria({}, [
-            {
-              column: 'userId',
-              order: 'desc',
-            },
-          ])
+          const users = await userRepository.getByCriteria({}, null, {
+            sorting: [
+              {
+                column: 'userId',
+                order: 'desc',
+              },
+            ],
+          })
 
           expect(users).toMatchObject([
             assertUser2,

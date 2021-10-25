@@ -21,8 +21,18 @@ export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow, Filt
   columnsToFetchDetails?: (keyof FullEntityRow & string)[]
 }
 
-export type UpdateConfig = {
+export type UpdateParams<FullEntityRow> = {
   timeout?: number
+  sorting?: SortingParam<FullEntityRow>[] | null
+}
+
+export type CreateBulkParams = {
+  chunkSize: number
+}
+
+export type GetParams<RowType> = {
+  columnsToFetch?: (keyof RowType & string)[]
+  sorting?: SortingParam<RowType>[] | null
 }
 
 export class AbstractRepository<
@@ -71,7 +81,7 @@ export class AbstractRepository<
       .returning(this.columnsToFetch)
 
     if (!doesSupportReturning(this.knex)) {
-      const insertedRow = await this.getById(insertedRows[0], undefined, transactionProvider)
+      const insertedRow = await this.getById(insertedRows[0], transactionProvider)
       return insertedRow!
     }
 
@@ -81,14 +91,14 @@ export class AbstractRepository<
   async createBulk(
     newEntityRows: NewEntityRow[],
     transactionProvider?: Knex.TransactionProvider,
-    chunkSize = 1000
+    params: CreateBulkParams = { chunkSize: 1000 }
   ): Promise<FullEntityRow[]> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const insertRows = newEntityRows.map((newEntityRow) =>
       pickWithoutUndefined(newEntityRow, this.columnsForCreate)
     )
 
-    const chunks = chunk(insertRows, chunkSize)
+    const chunks = chunk(insertRows, params.chunkSize)
 
     const insertedRows = []
     for (const rows of chunks) {
@@ -103,14 +113,14 @@ export class AbstractRepository<
   async createBulkNoReturning(
     newEntityRows: NewEntityRow[],
     transactionProvider?: Knex.TransactionProvider,
-    chunkSize = 1000
+    params: CreateBulkParams = { chunkSize: 1000 }
   ): Promise<void> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const insertRows = newEntityRows.map((newEntityRow) =>
       pickWithoutUndefined(newEntityRow, this.columnsForCreate)
     )
 
-    const chunks = chunk(insertRows, chunkSize)
+    const chunks = chunk(insertRows, params.chunkSize)
 
     for (const rows of chunks) {
       await queryBuilder(this.tableName).insert(rows)
@@ -121,7 +131,7 @@ export class AbstractRepository<
     id: string | number,
     updatedFields: UpdatedEntityRow,
     transactionProvider?: Knex.TransactionProvider,
-    updateConfig: UpdateConfig = {}
+    updateConfig: UpdateParams<UpdatedEntityRow> = {}
   ): Promise<FullEntityRow | undefined> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const updatedColumns = this.columnsForUpdate
@@ -153,12 +163,9 @@ export class AbstractRepository<
     if (doesSupportReturning(this.knex)) {
       returningResult = result
     } else {
-      returningResult = await this.getByCriteria(
-        filterCriteria,
-        undefined,
-        this.columnsToFetchDetails,
-        transactionProvider
-      )
+      returningResult = await this.getByCriteria(filterCriteria, transactionProvider, {
+        columnsToFetch: this.columnsToFetchDetails,
+      })
     }
 
     if (returningResult.length > 1) {
@@ -174,7 +181,7 @@ export class AbstractRepository<
     filterCriteria: Filters,
     updatedFields: UpdatedEntityRow,
     transactionProvider?: Knex.TransactionProvider | null,
-    sorting?: SortingParam<FullEntityRow>[] | null
+    updateParams: UpdateParams<UpdatedEntityRow> = {}
   ): Promise<FullEntityRow[]> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const updatedColumns = this.columnsForUpdate
@@ -189,7 +196,7 @@ export class AbstractRepository<
       .update(updatedColumns)
       .returning(this.columnsToFetch)
 
-    const sortParam = sorting ?? this.defaultOrderBy
+    const sortParam = updateParams.sorting ?? this.defaultOrderBy
     if (doesSupportUpdateOrderBy(this.knex) && sortParam) {
       qb.orderBy(sortParam)
     }
@@ -200,35 +207,34 @@ export class AbstractRepository<
 
   async getById(
     id: string | number,
-    columnsToFetch?: (keyof FullEntityRow & string)[],
-    transactionProvider?: Knex.TransactionProvider | null
+    transactionProvider?: Knex.TransactionProvider | null,
+    params: GetParams<FullEntityRow> = {}
   ): Promise<FullEntityRow | undefined> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const result = await queryBuilder(this.tableName)
       .where({ [this.idColumn]: id })
-      .select(columnsToFetch ?? this.columnsToFetchDetails)
+      .select(params.columnsToFetch ?? this.columnsToFetchDetails)
     return result?.[0]
   }
 
   async getByIdForUpdate(
     id: string | number,
     transactionProvider: Knex.TransactionProvider,
-    columnsToFetch?: (keyof FullEntityRow & string)[]
+    params: GetParams<FullEntityRow> = {}
   ): Promise<FullEntityRow | undefined> {
     const trx = await transactionProvider()
     const result = await this.knex(this.tableName)
       .transacting(trx)
       .forUpdate()
       .where({ [this.idColumn]: id })
-      .select(columnsToFetch ?? this.columnsToFetchDetails)
+      .select(params.columnsToFetch ?? this.columnsToFetchDetails)
     return result?.[0]
   }
 
   async getByCriteria(
     filterCriteria?: Filters,
-    sorting?: SortingParam<FullEntityRow>[] | null,
-    columnsToFetch?: (keyof FullEntityRow & string)[],
-    transactionProvider?: Knex.TransactionProvider | null
+    transactionProvider?: Knex.TransactionProvider | null,
+    params: GetParams<FullEntityRow> = {}
   ): Promise<FullEntityRow[]> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     let filters
@@ -241,10 +247,10 @@ export class AbstractRepository<
     }
 
     const qb = queryBuilder(this.tableName)
-      .select(columnsToFetch ?? this.columnsToFetchList)
+      .select(params.columnsToFetch ?? this.columnsToFetchList)
       .where(filters)
 
-    const sortParam = sorting ?? this.defaultOrderBy
+    const sortParam = params.sorting ?? this.defaultOrderBy
     if (sortParam) {
       qb.orderBy(sortParam)
     }
@@ -255,13 +261,12 @@ export class AbstractRepository<
 
   async getSingleByCriteria(
     filterCriteria: Filters,
-    columnsToFetch?: (keyof FullEntityRow & string)[]
+    params: GetParams<FullEntityRow> = {}
   ): Promise<FullEntityRow | undefined> {
-    const result = await this.getByCriteria(
-      filterCriteria,
-      null,
-      columnsToFetch ?? this.columnsToFetchDetails
-    )
+    const result = await this.getByCriteria(filterCriteria, null, {
+      columnsToFetch: params.columnsToFetch ?? this.columnsToFetchDetails,
+      sorting: params.sorting,
+    })
     if (result.length > 1) {
       throw new NonUniqueResultError('Query resulted more than in a single result', filterCriteria)
     }
