@@ -3,6 +3,7 @@ import { Knex } from 'knex'
 import { createUserTable, dropUserTable } from './helpers/tableCreator'
 import { createUserRepository, UserRepository } from './repositories/UserRepository'
 import { doesSupportReturning } from '../../lib/dbSupportHelper'
+import { isMysql, isPostgreSQL, isSQLite } from './helpers/dbHelpers'
 
 describe('AbstractRepository integration', () => {
   getAllDbs().forEach((db) => {
@@ -378,7 +379,7 @@ describe('AbstractRepository integration', () => {
           const [user1] = users1
 
           const user = await userRepository.getById(user1.userId)
-          const assertDates = knex.client.driverName.includes('sqlite')
+          const assertDates = isSQLite(knex)
             ? {
                 createdAt: expect.any(String),
                 updatedAt: expect.any(String),
@@ -388,6 +389,73 @@ describe('AbstractRepository integration', () => {
             ...assertUser1,
             ...assertDates,
           })
+        })
+      })
+
+      describe('getByIdForUpdate', () => {
+        it('locks row for update and timeouts', async () => {
+          if (!isPostgreSQL(knex) && !isMysql(knex)) {
+            return
+          }
+
+          expect.assertions(1)
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+          const users1 = await userRepository.getByCriteria({
+            name: 'test',
+          })
+          const [user1] = users1
+
+          const trxProvider = knex.transactionProvider()
+          await userRepository.getByIdForUpdate(user1.userId, trxProvider)
+
+          try {
+            await userRepository.updateById(
+              user1.userId,
+              {
+                age: 99,
+              },
+              undefined,
+              { timeout: 100 }
+            )
+          } catch (err: any) {
+            expect(err.message).toEqual(
+              'Defined query timeout of 100ms exceeded when running query.'
+            )
+          } finally {
+            await userRepository.rollbackTransaction(trxProvider)
+          }
+        })
+
+        it('locks row for update and updates in same transaction', async () => {
+          if (!isPostgreSQL(knex) && !isMysql(knex)) {
+            return
+          }
+
+          expect.assertions(1)
+          await userRepository.create(USER_1)
+          await userRepository.create(USER_2)
+          const users1 = await userRepository.getByCriteria({
+            name: 'test',
+          })
+          const [user1] = users1
+
+          const trxProvider = knex.transactionProvider()
+          await userRepository.getByIdForUpdate(user1.userId, trxProvider)
+
+          try {
+            await userRepository.updateById(
+              user1.userId,
+              {
+                age: 99,
+              },
+              trxProvider
+            )
+            const result = await userRepository.getById(user1.userId, undefined, trxProvider)
+            expect(result!.age).toEqual(99)
+          } finally {
+            await userRepository.rollbackTransaction(trxProvider)
+          }
         })
       })
 

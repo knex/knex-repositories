@@ -21,6 +21,10 @@ export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow, Filt
   columnsToFetchDetails?: (keyof FullEntityRow & string)[]
 }
 
+export type UpdateConfig = {
+  timeout?: number
+}
+
 export class AbstractRepository<
   NewEntityRow extends Record<string, any> = any,
   FullEntityRow extends NewEntityRow = any,
@@ -116,17 +120,24 @@ export class AbstractRepository<
   async updateById(
     id: string | number,
     updatedFields: UpdatedEntityRow,
-    transactionProvider?: Knex.TransactionProvider
+    transactionProvider?: Knex.TransactionProvider,
+    updateConfig: UpdateConfig = {}
   ): Promise<FullEntityRow | undefined> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const updatedColumns = this.columnsForUpdate
       ? pickWithoutUndefined(updatedFields, this.columnsForUpdate)
       : copyWithoutUndefined(updatedFields)
 
-    const updatedUserRows = await queryBuilder(this.tableName)
+    const qb = queryBuilder(this.tableName)
       .where({ [this.idColumn]: id })
       .update(updatedColumns)
       .returning(this.columnsToFetch)
+
+    if (updateConfig.timeout) {
+      qb.timeout(updateConfig.timeout)
+    }
+
+    const updatedUserRows = await qb
 
     return updatedUserRows[0]
   }
@@ -194,6 +205,20 @@ export class AbstractRepository<
   ): Promise<FullEntityRow | undefined> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const result = await queryBuilder(this.tableName)
+      .where({ [this.idColumn]: id })
+      .select(columnsToFetch ?? this.columnsToFetchDetails)
+    return result?.[0]
+  }
+
+  async getByIdForUpdate(
+    id: string | number,
+    transactionProvider: Knex.TransactionProvider,
+    columnsToFetch?: (keyof FullEntityRow & string)[]
+  ): Promise<FullEntityRow | undefined> {
+    const trx = await transactionProvider()
+    const result = await this.knex(this.tableName)
+      .transacting(trx)
+      .forUpdate()
       .where({ [this.idColumn]: id })
       .select(columnsToFetch ?? this.columnsToFetchDetails)
     return result?.[0]
