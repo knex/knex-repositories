@@ -265,6 +265,36 @@ export class AbstractRepository<
     return result
   }
 
+  async getByCriteriaForUpdate(
+    transactionProvider: Knex.TransactionProvider,
+    filterCriteria?: Filters,
+    params: GetParams<FullEntityRow> = {}
+  ): Promise<FullEntityRow[]> {
+    const trx = await transactionProvider()
+    let filters
+    if (filterCriteria) {
+      filters = this.columnsForFilters
+        ? pickWithoutUndefined(filterCriteria, this.columnsForFilters)
+        : copyWithoutUndefined(filterCriteria)
+    } else {
+      filters = {}
+    }
+
+    const qb = this.knex(this.tableName)
+      .transacting(trx)
+      .forUpdate()
+      .select(params.columnsToFetch ?? this.columnsToFetchList)
+      .where(filters)
+
+    const sortParam = params.sorting ?? this.defaultOrderBy
+    if (sortParam) {
+      qb.orderBy(sortParam)
+    }
+
+    const result = await qb
+    return result
+  }
+
   async getSingleByCriteria(
     filterCriteria: Filters,
     params: GetParams<FullEntityRow> = {}

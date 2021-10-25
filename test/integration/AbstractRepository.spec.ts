@@ -497,11 +497,82 @@ describe('AbstractRepository integration', () => {
               },
               trxProvider
             )
-            const result = await userRepository.getById(user1.userId, trxProvider)
-            expect(result!.age).toEqual(99)
           } finally {
-            await userRepository.rollbackTransaction(trxProvider)
+            await userRepository.commitTransaction(trxProvider)
           }
+          const result = await userRepository.getById(user1.userId, trxProvider)
+          expect(result!.age).toEqual(99)
+        })
+      })
+
+      describe('getByCriteriaForUpdate', () => {
+        it('locks row for update and timeouts', async () => {
+          if (!isPostgreSQL(knex) && !isMysql(knex)) {
+            return
+          }
+
+          expect.assertions(1)
+          await userRepositoryLite.create(USER_1)
+          await userRepositoryLite.create(USER_2)
+          const users1 = await userRepositoryLite.getByCriteria({
+            name: 'test',
+          })
+          const [user1] = users1
+
+          const trxProvider = knex.transactionProvider()
+          await userRepositoryLite.getByCriteriaForUpdate(trxProvider, {
+            userId: user1.userId,
+          })
+
+          try {
+            await userRepositoryLite.updateById(
+              user1.userId,
+              {
+                age: 99,
+              },
+              undefined,
+              { timeout: 100 }
+            )
+          } catch (err: any) {
+            expect(err.message).toEqual(
+              'Defined query timeout of 100ms exceeded when running query.'
+            )
+          } finally {
+            await userRepositoryLite.rollbackTransaction(trxProvider)
+          }
+        })
+
+        it('locks row for update and updates in same transaction', async () => {
+          if (!isPostgreSQL(knex) && !isMysql(knex)) {
+            return
+          }
+
+          expect.assertions(1)
+          await userRepositoryLite.create(USER_1)
+          await userRepositoryLite.create(USER_2)
+          const users1 = await userRepositoryLite.getByCriteria({
+            name: 'test',
+          })
+          const [user1] = users1
+
+          const trxProvider = knex.transactionProvider()
+          await userRepositoryLite.getByCriteriaForUpdate(trxProvider, {
+            userId: user1.userId,
+          })
+
+          try {
+            await userRepositoryLite.updateById(
+              user1.userId,
+              {
+                age: 99,
+              },
+              trxProvider
+            )
+          } finally {
+            await userRepositoryLite.commitTransaction(trxProvider)
+          }
+          const result = await userRepositoryLite.getById(user1.userId, trxProvider)
+          expect(result!.age).toEqual(99)
         })
       })
 
