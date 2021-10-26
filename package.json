@@ -17,6 +17,7 @@
     "db:stop": "docker-compose -f scripts/docker-compose.yml down",
     "test": "jest --config=jest.config.json --runInBand",
     "test:mysql": "cross-env DB=mysql jest --config=jest.config.json --runInBand",
+    "test:postgresql": "cross-env DB=postgres jest --config=jest.config.json --runInBand",
     "test:update-snapshots": "jest --config=jest.config.json --runInBand -u",
     "test:coverage": "jest --config=jest.config.json --coverage --runInBand",
     "test:ci": "npm run lint && npm run test:coverage",
