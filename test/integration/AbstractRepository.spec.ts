@@ -352,6 +352,7 @@ describe('AbstractRepository integration', () => {
             },
           ])
         })
+
         it('throws an error if too many entities are updated', async () => {
           await userRepository.create({ ...USER_1, name: 'test' })
           await userRepository.create({ ...USER_2, name: 'test' })
@@ -500,7 +501,7 @@ describe('AbstractRepository integration', () => {
           } finally {
             await userRepository.commitTransaction(trxProvider)
           }
-          const result = await userRepository.getById(user1.userId, trxProvider)
+          const result = await userRepository.getById(user1.userId)
           expect(result!.age).toEqual(99)
         })
       })
@@ -571,7 +572,7 @@ describe('AbstractRepository integration', () => {
           } finally {
             await userRepositoryLite.commitTransaction(trxProvider)
           }
-          const result = await userRepositoryLite.getById(user1.userId, trxProvider)
+          const result = await userRepositoryLite.getById(user1.userId)
           expect(result!.age).toEqual(99)
         })
       })
