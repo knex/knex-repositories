@@ -1,10 +1,14 @@
-import { getAllDbs, getKnexForDb } from './helpers/knexInstanceProvider'
 import { Knex } from 'knex'
-import { createUserTable, dropUserTable } from './helpers/tableCreator'
-import { createUserRepository, UserRepository } from './repositories/UserRepository'
 import { doesSupportReturning } from '../../lib/dbSupportHelper'
+import { getAllDbs, getKnexForDb } from './helpers/knexInstanceProvider'
+import { createUserTable, dropUserTable } from './helpers/tableCreator'
 import { isMysql, isPostgreSQL, isSQLite } from './helpers/dbHelpers'
+import { createUserRepository, UserRepository } from './repositories/UserRepository'
 import { createUserRepositoryLite, UserRepositoryLite } from './repositories/UserRepositoryLite'
+import {
+  createUserRepositoryStrict,
+  UserRepositoryStrict,
+} from './repositories/UserRepositoryStrict'
 
 describe('AbstractRepository integration', () => {
   getAllDbs().forEach((db) => {
@@ -12,10 +16,12 @@ describe('AbstractRepository integration', () => {
       let knex: Knex
       let userRepository: UserRepository
       let userRepositoryLite: UserRepositoryLite
+      let userRepositoryStrict: UserRepositoryStrict
       beforeEach(async () => {
         knex = getKnexForDb(db)
         userRepository = createUserRepository(knex)
         userRepositoryLite = createUserRepositoryLite(knex)
+        userRepositoryStrict = createUserRepositoryStrict(knex)
         await createUserTable(knex)
       })
 
@@ -68,6 +74,12 @@ describe('AbstractRepository integration', () => {
           const result = await userRepositoryLite.create(USER_1)
 
           expect(result).toMatchObject(assertUser1)
+        })
+
+        it('throws an error on invalid table', async () => {
+          await expect(() => userRepositoryStrict.create(USER_1)).rejects.toThrowError(
+            /Unsupported field: age/
+          )
         })
       })
 
