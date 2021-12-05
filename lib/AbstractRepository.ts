@@ -3,6 +3,7 @@ import { chunk, copyWithoutUndefined, pickWithoutUndefined } from 'knex-utils'
 import { NonUniqueResultError } from './NonUniqueResultError'
 import { NoEntityExistsError } from './NoEntityExistsError'
 import { doesSupportReturning, doesSupportUpdateOrderBy } from './dbSupportHelper'
+import { validateOnlyWhitelistedFieldsSet } from 'knex-utils/dist/lib/objectUtils'
 
 export type SortingParam<FullEntityRow> = {
   column: keyof FullEntityRow & string
@@ -19,6 +20,7 @@ export type RepositoryConfig<NewEntityRow, FullEntityRow, UpdatedEntityRow, Filt
   columnsToFetch?: (keyof FullEntityRow & string)[]
   columnsToFetchList?: (keyof FullEntityRow & string)[]
   columnsToFetchDetails?: (keyof FullEntityRow & string)[]
+  throwOnInvalidColumns?: boolean
 }
 
 export type UpdateParams<FullEntityRow> = {
@@ -51,6 +53,10 @@ export class AbstractRepository<
   private readonly columnsForCreate?: string[]
   private readonly columnsForFilters?: string[]
   private readonly columnsForUpdate?: string[]
+  private readonly columnsForCreateSet?: Set<string>
+  private readonly columnsForFiltersSet?: Set<string>
+  private readonly columnsForUpdateSet?: Set<string>
+  private readonly throwOnInvalidColumns?: boolean
 
   constructor(
     knex: Knex,
@@ -67,16 +73,36 @@ export class AbstractRepository<
     this.columnsForCreate = config.columnsForCreate || undefined
     this.columnsForFilters = config.columnsForFilters || undefined
     this.columnsForUpdate = config.columnsForUpdate || undefined
+    this.columnsForCreateSet = this.columnsForCreate ? new Set(this.columnsForCreate) : undefined
+    this.columnsForFiltersSet = this.columnsForFilters ? new Set(this.columnsForFilters) : undefined
+    this.columnsForUpdateSet = this.columnsForUpdate ? new Set(this.columnsForUpdate) : undefined
+    this.throwOnInvalidColumns =
+      (config.throwOnInvalidColumns &&
+        (this.columnsForCreateSet !== undefined ||
+          this.columnsForFiltersSet !== undefined ||
+          this.columnsForUpdateSet !== undefined)) ??
+      false
+  }
+
+  pickWithoutUndefined<T, K extends string | number | symbol>(
+    source: T,
+    propNames: readonly K[],
+    propSet?: Set<string>
+  ): Pick<T, Exclude<keyof T, Exclude<keyof T, K>>> {
+    if (this.throwOnInvalidColumns && propSet) {
+      validateOnlyWhitelistedFieldsSet(source, propSet)
+    }
+    return pickWithoutUndefined(source, propNames)
   }
 
   async create(
     newEntityRow: NewEntityRow,
     transactionProvider?: Knex.TransactionProvider
   ): Promise<FullEntityRow> {
-    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const insertRow = this.columnsForCreate
-      ? pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+      ? this.pickWithoutUndefined(newEntityRow, this.columnsForCreate, this.columnsForCreateSet)
       : copyWithoutUndefined(newEntityRow)
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
     const insertedRows = await queryBuilder(this.tableName)
       .insert(insertRow)
@@ -95,12 +121,12 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider,
     params: CreateBulkParams = { chunkSize: 1000 }
   ): Promise<FullEntityRow[]> {
-    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const insertRows = newEntityRows.map((newEntityRow) =>
       this.columnsForCreate
-        ? pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+        ? this.pickWithoutUndefined(newEntityRow, this.columnsForCreate, this.columnsForCreateSet)
         : copyWithoutUndefined(newEntityRow)
     )
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
     const chunks = chunk(insertRows, params.chunkSize)
 
@@ -119,12 +145,12 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider,
     params: CreateBulkParams = { chunkSize: 1000 }
   ): Promise<void> {
-    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const insertRows = newEntityRows.map((newEntityRow) =>
       this.columnsForCreate
-        ? pickWithoutUndefined(newEntityRow, this.columnsForCreate)
+        ? this.pickWithoutUndefined(newEntityRow, this.columnsForCreate, this.columnsForCreateSet)
         : copyWithoutUndefined(newEntityRow)
     )
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
     const chunks = chunk(insertRows, params.chunkSize)
 
@@ -139,10 +165,10 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider,
     updateConfig: UpdateParams<UpdatedEntityRow> = {}
   ): Promise<FullEntityRow | undefined> {
-    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const updatedColumns = this.columnsForUpdate
-      ? pickWithoutUndefined(updatedFields, this.columnsForUpdate)
+      ? this.pickWithoutUndefined(updatedFields, this.columnsForUpdate, this.columnsForUpdateSet)
       : copyWithoutUndefined(updatedFields)
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
     const qb = queryBuilder(this.tableName)
       .where({ [this.idColumn]: id })
@@ -189,13 +215,13 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider | null,
     updateParams: UpdateParams<UpdatedEntityRow> = {}
   ): Promise<FullEntityRow[]> {
-    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     const updatedColumns = this.columnsForUpdate
-      ? pickWithoutUndefined(updatedFields, this.columnsForUpdate)
+      ? this.pickWithoutUndefined(updatedFields, this.columnsForUpdate, this.columnsForUpdateSet)
       : copyWithoutUndefined(updatedFields)
     const filters = this.columnsForFilters
-      ? pickWithoutUndefined(filterCriteria, this.columnsForFilters)
+      ? this.pickWithoutUndefined(filterCriteria, this.columnsForFilters, this.columnsForFiltersSet)
       : copyWithoutUndefined(filterCriteria)
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
     const qb = queryBuilder(this.tableName)
       .where(filters)
@@ -242,15 +268,19 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider | null,
     params: GetParams<FullEntityRow> = {}
   ): Promise<FullEntityRow[]> {
-    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
     let filters
     if (filterCriteria) {
       filters = this.columnsForFilters
-        ? pickWithoutUndefined(filterCriteria, this.columnsForFilters)
+        ? this.pickWithoutUndefined(
+            filterCriteria,
+            this.columnsForFilters,
+            this.columnsForFiltersSet
+          )
         : copyWithoutUndefined(filterCriteria)
     } else {
       filters = {}
     }
+    const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
     const qb = queryBuilder(this.tableName)
       .select(params.columnsToFetch ?? this.columnsToFetchList)
@@ -270,15 +300,19 @@ export class AbstractRepository<
     filterCriteria?: Filters,
     params: GetParams<FullEntityRow> = {}
   ): Promise<FullEntityRow[]> {
-    const trx = await transactionProvider()
     let filters
     if (filterCriteria) {
       filters = this.columnsForFilters
-        ? pickWithoutUndefined(filterCriteria, this.columnsForFilters)
+        ? this.pickWithoutUndefined(
+            filterCriteria,
+            this.columnsForFilters,
+            this.columnsForFiltersSet
+          )
         : copyWithoutUndefined(filterCriteria)
     } else {
       filters = {}
     }
+    const trx = await transactionProvider()
 
     const qb = this.knex(this.tableName)
       .transacting(trx)
@@ -326,7 +360,7 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider
   ): Promise<void> {
     const filters = this.columnsForFilters
-      ? pickWithoutUndefined(filterCriteria, this.columnsForFilters)
+      ? this.pickWithoutUndefined(filterCriteria, this.columnsForFilters, this.columnsForFiltersSet)
       : copyWithoutUndefined(filterCriteria)
 
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)

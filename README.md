@@ -53,6 +53,7 @@ export function createUserRepository(knex: Knex): UserRepository {
     columnsForCreate: ['name', 'age', 'passwordHash'],
     columnsForUpdate: ['age'],
     columnsForFilters: ['userId', 'name'],
+    throwOnInvalidColumns: true // might be a good idea to turn on in tests and disable in production to decrease overhead
   })
 }
 ```
