@@ -84,7 +84,7 @@ export class AbstractRepository<
       false
   }
 
-  pickWithoutUndefined<T, K extends string | number | symbol>(
+  pickWithoutUndefined<T extends object, K extends string | number | symbol>(
     source: T,
     propNames: readonly K[],
     propSet?: Set<string>
