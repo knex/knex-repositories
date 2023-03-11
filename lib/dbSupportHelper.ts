@@ -1,6 +1,6 @@
 import { Knex } from 'knex'
 
-const DB_WITHOUT_RETURNING = new Set(['mysql', 'mysql2', 'sqlite3'])
+const DB_WITHOUT_RETURNING = new Set(['mysql', 'mysql2'])
 
 export function doesSupportReturning(knex: Knex): boolean {
   return !DB_WITHOUT_RETURNING.has(knex.client.driverName)
