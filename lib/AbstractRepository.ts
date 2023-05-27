@@ -104,7 +104,7 @@ export class AbstractRepository<
       : copyWithoutUndefined(newEntityRow)
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
-    const insertedRows = await queryBuilder(this.tableName)
+    const insertedRows = await this.startQueryBuilder(queryBuilder)
       .insert(insertRow)
       .returning(this.columnsToFetch)
 
@@ -133,7 +133,7 @@ export class AbstractRepository<
     const insertedRows = []
     for (const rows of chunks) {
       insertedRows.push(
-        ...(await queryBuilder(this.tableName).insert(rows).returning(this.columnsToFetch))
+        ...(await this.startQueryBuilder(queryBuilder).insert(rows).returning(this.columnsToFetch))
       )
     }
 
@@ -155,7 +155,7 @@ export class AbstractRepository<
     const chunks = chunk(insertRows, params.chunkSize)
 
     for (const rows of chunks) {
-      await queryBuilder(this.tableName).insert(rows)
+      await this.startQueryBuilder(queryBuilder).insert(rows)
     }
   }
 
@@ -170,7 +170,7 @@ export class AbstractRepository<
       : copyWithoutUndefined(updatedFields)
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
-    const qb = queryBuilder(this.tableName)
+    const qb = this.startQueryBuilder(queryBuilder)
       .where({ [this.idColumn]: id })
       .update(updatedColumns)
       .returning(this.columnsToFetch)
@@ -223,7 +223,7 @@ export class AbstractRepository<
       : copyWithoutUndefined(filterCriteria)
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
-    const qb = queryBuilder(this.tableName)
+    const qb = this.startQueryBuilder(queryBuilder)
       .where(filters)
       .update(updatedColumns)
       .returning(this.columnsToFetch)
@@ -243,7 +243,7 @@ export class AbstractRepository<
     params: GetParams<FullEntityRow> = {}
   ): Promise<FullEntityRow | undefined> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
-    const result = await queryBuilder(this.tableName)
+    const result = await this.startQueryBuilder(queryBuilder)
       .where({ [this.idColumn]: id })
       .select(params.columnsToFetch ?? this.columnsToFetchDetails)
     return result?.[0]
@@ -255,7 +255,7 @@ export class AbstractRepository<
     params: GetParams<FullEntityRow> = {}
   ): Promise<FullEntityRow | undefined> {
     const trx = await transactionProvider()
-    const result = await this.knex(this.tableName)
+    const result = await this.startQueryBuilder(this.knex)
       .transacting(trx)
       .forUpdate()
       .where({ [this.idColumn]: id })
@@ -282,7 +282,7 @@ export class AbstractRepository<
     }
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
 
-    const qb = queryBuilder(this.tableName)
+    const qb = this.startQueryBuilder(queryBuilder)
       .select(params.columnsToFetch ?? this.columnsToFetchList)
       .where(filters)
 
@@ -314,7 +314,7 @@ export class AbstractRepository<
     }
     const trx = await transactionProvider()
 
-    const qb = this.knex(this.tableName)
+    const qb = this.startQueryBuilder(this.knex)
       .transacting(trx)
       .forUpdate()
       .select(params.columnsToFetch ?? this.columnsToFetchList)
@@ -348,7 +348,7 @@ export class AbstractRepository<
     transactionProvider?: Knex.TransactionProvider
   ): Promise<void> {
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
-    await queryBuilder(this.tableName)
+    await this.startQueryBuilder(queryBuilder)
       .where({
         [this.idColumn]: id,
       })
@@ -364,7 +364,7 @@ export class AbstractRepository<
       : copyWithoutUndefined(filterCriteria)
 
     const queryBuilder = await this.getKnexOrTransaction(transactionProvider)
-    await queryBuilder(this.tableName).where(filters).del()
+    await this.startQueryBuilder(queryBuilder).where(filters).del()
   }
 
   createTransactionProvider(): Knex.TransactionProvider {
@@ -383,5 +383,9 @@ export class AbstractRepository<
 
   async getKnexOrTransaction(transactionProvider?: Knex.TransactionProvider | null): Promise<Knex> {
     return transactionProvider ? await transactionProvider() : this.knex
+  }
+
+  protected startQueryBuilder(queryBuilder: Knex): Knex.QueryBuilder {
+    return queryBuilder(this.tableName)
   }
 }
